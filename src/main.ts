@@ -241,6 +241,11 @@ class Game extends Base {
   "maya-background",
   "assets/worlds/maya/background.png"
 );
+
+this.load.image(
+  "arrow",
+  "assets/projectiles/arrow.png"
+);
   }
   create() {
     this.input.addPointer(3);
@@ -591,40 +596,51 @@ class Game extends Base {
     if (!this.paused && this.player.body?.blocked.down)
       this.player.setVelocityY(-600);
   }
-  fire() {
+ fire() {
+  if (
+    this.paused ||
+    this.won ||
+    this.isShooting ||
+    this.time.now - this.lastShot < 300
+  ) return;
+
+  this.lastShot = this.time.now;
+  this.isShooting = true;
+
+  // Empieza la animación del arco
+  this.player.play("explorer-shoot", true);
+
+  // Esperamos hasta el momento en que suelta la cuerda
+  this.time.delayedCall(320, () => {
+
     if (
       this.paused ||
       this.won ||
-      this.isShooting ||
-      this.time.now - this.lastShot < 300
-    )
-      return;
+      !this.player?.active
+    ) return;
 
-    this.lastShot = this.time.now;
-    this.isShooting = true;
-
-    // Animación del arco
-    this.player.play("explorer-shoot", true);
-
-    // Crear la flecha/proyectil
-    const s = this.shots.create(
-      this.player.x + this.facing * 24,
-      this.player.y - 4,
-      "shot",
+    const arrow = this.shots.create(
+      this.player.x + this.facing * 32,
+      this.player.y - 6,
+      "arrow"
     ) as Phaser.Physics.Arcade.Sprite;
 
-    s.setVelocityX(this.facing * 430);
-    s.setData("born", this.time.now);
+    arrow.setVelocityX(this.facing * 430);
 
-    // Cuando termina SHOOT, devolver el control
-    // al sistema IDLE / RUN / JUMP / FALL
-    this.player.once(
-      Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + "explorer-shoot",
-      () => {
-        this.isShooting = false;
-      },
-    );
-  }
+    // La imagen original mira →
+    // Si disparamos hacia ←, la invertimos.
+    arrow.setFlipX(this.facing < 0);
+
+    arrow.setData("born", this.time.now);
+  });
+
+  this.player.once(
+    Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + "explorer-shoot",
+    () => {
+      this.isShooting = false;
+    }
+  );
+}
   damage() {
     if (this.invulnerable || this.won) return;
     this.lives--;
