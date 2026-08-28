@@ -1,1 +1,6 @@
-this.input.keyboard!.removeAllListeners();
+node_modules/
+dist/
+.env
+.env.*
+.DS_Store
+*.log

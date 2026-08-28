@@ -160,6 +160,7 @@ class Game extends Base {
   platforms!: Phaser.Physics.Arcade.StaticGroup;
   enemies!: Phaser.Physics.Arcade.Group;
   shots!: Phaser.Physics.Arcade.Group;
+  firing = false;
   left = false;
   right = false;
   idx = 0;
@@ -171,24 +172,134 @@ class Game extends Base {
   won = false;
   hudLives!: Phaser.GameObjects.Text;
   soundLabel!: Phaser.GameObjects.Text;
+  isShooting = false;
   init(d: { idx: number }) {
-  this.idx = d.idx ?? 0;
+    this.idx = d.idx ?? 0;
 
-  // Reiniciar el estado cada vez que comienza una expedición
-  this.left = false;
-  this.right = false;
-  this.paused = false;
+    // Reiniciar el estado cada vez que comienza una expedición
+    this.left = false;
+    this.right = false;
+    this.paused = false;
+    this.firing = false;
 
-  this.lives = 3;
-  this.invulnerable = false;
+    this.lives = 3;
+    this.invulnerable = false;
 
-  this.facing = 1;
-  this.lastShot = 0;
+    this.facing = 1;
+    this.lastShot = 0;
 
-  this.won = false;
-}
+    this.won = false;
+    this.isShooting = false;
+  }
+  preload() {
+    this.load.spritesheet(
+      "explorer-run",
+      "assets/characters/explorer/run.png",
+      {
+        frameWidth: 96,
+        frameHeight: 78,
+      },
+    );
+
+    this.load.spritesheet(
+      "explorer-idle",
+      "assets/characters/explorer/idle.png",
+      {
+        frameWidth: 43,
+        frameHeight: 78,
+      },
+    );
+
+    this.load.spritesheet(
+      "explorer-jump",
+      "assets/characters/explorer/jump.png",
+      {
+        frameWidth: 61,
+        frameHeight: 78,
+      },
+    );
+
+    this.load.spritesheet(
+      "explorer-fall",
+      "assets/characters/explorer/fall.png",
+      {
+        frameWidth: 62,
+        frameHeight: 78,
+      },
+    );
+
+    this.load.spritesheet(
+      "explorer-shoot",
+      "assets/characters/explorer/shoot.png",
+      {
+        frameWidth: 83,
+        frameHeight: 78,
+      },
+    );
+  }
   create() {
+    this.input.addPointer(3);
     const world = WORLDS[this.idx];
+    if (!this.anims.exists("explorer-run")) {
+      this.anims.create({
+        key: "explorer-run",
+        frames: this.anims.generateFrameNumbers("explorer-run", {
+          start: 0,
+          end: 7,
+        }),
+        frameRate: 10,
+        repeat: -1,
+      });
+    }
+
+    if (!this.anims.exists("explorer-idle")) {
+      this.anims.create({
+        key: "explorer-idle",
+        frames: this.anims.generateFrameNumbers("explorer-idle", {
+          start: 0,
+          end: 3,
+        }),
+        frameRate: 4,
+        repeat: -1,
+      });
+    }
+
+    if (!this.anims.exists("explorer-jump")) {
+      this.anims.create({
+        key: "explorer-jump",
+        frames: this.anims.generateFrameNumbers("explorer-jump", {
+          start: 0,
+          end: 7,
+        }),
+        frameRate: 10,
+        repeat: 0,
+      });
+    }
+
+    if (!this.anims.exists("explorer-fall")) {
+      this.anims.create({
+        key: "explorer-fall",
+        frames: this.anims.generateFrameNumbers("explorer-fall", {
+          start: 0,
+          end: 4,
+        }),
+        frameRate: 8,
+        repeat: 0,
+      });
+    }
+
+    if (!this.anims.exists("explorer-shoot")) {
+      this.anims.create({
+        key: "explorer-shoot",
+        frames: this.anims.generateFrameNumbers("explorer-shoot", {
+          start: 0,
+          end: 13,
+        }),
+        frameRate: 16,
+        repeat: 0,
+      });
+    }
+
     this.cameras.main.setBackgroundColor(world.bg);
     this.physics.world.setBounds(0, 0, WORLD_W, HUD_TOP);
     this.makeTextures(world);
@@ -219,7 +330,9 @@ class Game extends Base {
     plat(2300, 450, 180);
     plat(2860, 475, 200);
     plat(3340, 420, 180);
-    this.player = this.physics.add.sprite(90, 530, "hero");
+    this.player = this.physics.add.sprite(90, 530, "explorer-idle", 0);
+
+    this.player.setScale(0.55);
     this.player.setCollideWorldBounds(true).setBounce(0.02);
     this.physics.add.collider(this.player, this.platforms);
     this.enemies = this.physics.add.group({ allowGravity: true });
@@ -269,18 +382,18 @@ class Game extends Base {
     this.input.keyboard!.removeAllListeners();
 
     this.cursors = this.input.keyboard!.createCursorKeys();
-    
-    this.input
-      .keyboard!.addKey("A")
-      .on("down", () => (this.left = true))
-      .on("up", () => (this.left = false));
-    this.input
-      .keyboard!.addKey("D")
-      .on("down", () => (this.right = true))
-      .on("up", () => (this.right = false));
+
+    this.input.keyboard!.addKey("A");
+    this.input.keyboard!.addKey("D");
     this.input.keyboard!.on("keydown-SPACE", () => this.jump());
     this.input.keyboard!.on("keydown-F", () => this.fire());
     this.input.keyboard!.on("keydown-ESC", () => this.pauseMenu());
+
+    this.game.events.on(Phaser.Core.Events.BLUR, this.resetControls, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.game.events.off(Phaser.Core.Events.BLUR, this.resetControls, this);
+      this.resetControls();
+    });
     this.cameras.main.setBounds(0, 0, WORLD_W, H);
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1, 0, 45);
     this.cameras.main.setDeadzone(90, 120);
@@ -365,13 +478,20 @@ class Game extends Base {
       () => (this.right = true),
       () => (this.right = false),
     );
+
     this.touchButton(
       305,
       710,
       "✦",
-      () => this.fire(),
-      () => {},
+      () => {
+        this.firing = true;
+        this.fire();
+      },
+      () => {
+        this.firing = false;
+      },
     );
+
     this.touchButton(
       375,
       710,
@@ -405,31 +525,83 @@ class Game extends Base {
     down: () => void,
     up: () => void,
   ) {
-    const c = this.add
-      .circle(x, y, 29, 0x000000, 0.35)
-      .setStrokeStyle(2, 0xffffff, 0.65)
-      .setInteractive()
+    const button = this.add
+      .circle(x, y, 32, 0x000000, 0.45)
+      .setStrokeStyle(2, 0xffffff, 0.75)
       .setScrollFactor(0)
-      .setDepth(103);
-    this.txt(x, y, label, 22).setScrollFactor(0).setDepth(104);
-    c.on("pointerdown", down);
-    c.on("pointerup", up);
-    c.on("pointerout", up);
+      .setDepth(110)
+      .setInteractive();
+
+    const text = this.txt(x, y, label, 24).setScrollFactor(0).setDepth(111);
+
+    // El texto es puramente visual.
+    // Toda la interacción pertenece al círculo.
+    text.disableInteractive();
+
+    button.on("pointerdown", (_pointer: Phaser.Input.Pointer) => {
+      button.setAlpha(0.65);
+      down();
+    });
+
+    button.on("pointerup", (_pointer: Phaser.Input.Pointer) => {
+      button.setAlpha(1);
+      up();
+    });
+
+    button.on("pointerupoutside", (_pointer: Phaser.Input.Pointer) => {
+      button.setAlpha(1);
+      up();
+    });
+
+    button.on("pointerout", (_pointer: Phaser.Input.Pointer) => {
+      button.setAlpha(1);
+      up();
+    });
   }
+  resetControls() {
+    this.left = false;
+    this.right = false;
+    this.firing = false;
+    if (this.player?.active) this.player.setVelocityX(0);
+  }
+
   jump() {
     if (!this.paused && this.player.body?.blocked.down)
       this.player.setVelocityY(-600);
   }
   fire() {
-    if (this.paused || this.won || this.time.now - this.lastShot < 300) return;
+    if (
+      this.paused ||
+      this.won ||
+      this.isShooting ||
+      this.time.now - this.lastShot < 300
+    )
+      return;
+
     this.lastShot = this.time.now;
+    this.isShooting = true;
+
+    // Animación del arco
+    this.player.play("explorer-shoot", true);
+
+    // Crear la flecha/proyectil
     const s = this.shots.create(
       this.player.x + this.facing * 24,
       this.player.y - 4,
       "shot",
     ) as Phaser.Physics.Arcade.Sprite;
+
     s.setVelocityX(this.facing * 430);
     s.setData("born", this.time.now);
+
+    // Cuando termina SHOOT, devolver el control
+    // al sistema IDLE / RUN / JUMP / FALL
+    this.player.once(
+      Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + "explorer-shoot",
+      () => {
+        this.isShooting = false;
+      },
+    );
   }
   damage() {
     if (this.invulnerable || this.won) return;
@@ -459,16 +631,33 @@ class Game extends Base {
   update() {
     if (this.paused || this.won || !this.player?.active) return;
     let vx = 0;
-    if (this.left || this.cursors.left.isDown) {
-      vx = -250;
-      this.facing = -1;
-    }
-    if (this.right || this.cursors.right.isDown) {
-      vx = 250;
-      this.facing = 1;
+    const keyA = this.input.keyboard!.addKey("A");
+    const keyD = this.input.keyboard!.addKey("D");
+    const moveLeft = this.left || this.cursors.left.isDown || keyA.isDown;
+    const moveRight = this.right || this.cursors.right.isDown || keyD.isDown;
+
+    if (moveLeft !== moveRight) {
+      if (moveLeft) { vx = -250; this.facing = -1; }
+      else { vx = 250; this.facing = 1; }
     }
     this.player.setVelocityX(vx);
-    this.player.setFlipX(this.facing < 0);
+    if (vx < 0) this.player.setFlipX(true);
+    if (vx > 0) this.player.setFlipX(false);
+
+    const onGround = this.player.body?.blocked.down;
+    const velocityY = this.player.body?.velocity.y ?? 0;
+    if (!this.isShooting) {
+      if (!onGround && velocityY < 0) {
+        if (this.player.anims.currentAnim?.key !== "explorer-jump") this.player.play("explorer-jump");
+      } else if (!onGround && velocityY >= 0) {
+        if (this.player.anims.currentAnim?.key !== "explorer-fall") this.player.play("explorer-fall");
+      } else if (vx !== 0) {
+        this.player.play("explorer-run", true);
+      } else {
+        this.player.play("explorer-idle", true);
+      }
+    }
+
     if (Phaser.Input.Keyboard.JustDown(this.cursors.up)) this.jump();
     this.enemies?.children.iterate((o: any) => {
       if (!o?.active) return true;
@@ -484,6 +673,9 @@ class Game extends Base {
       return true;
     });
     if (this.player.y > HUD_TOP - 15) this.damage();
+    if (this.firing) {
+      this.fire();
+    }
   }
   toggleSound() {
     const off = localStorage.getItem("music") === "off";
@@ -493,6 +685,7 @@ class Game extends Base {
   }
   pauseMenu() {
     if (this.paused || this.won) return;
+    this.resetControls();
     this.paused = true;
     this.physics.pause();
     const shade = this.add
@@ -529,6 +722,7 @@ class Game extends Base {
     menu.on("pointerdown", () => this.scene.start("Worlds"));
   }
   gameOver() {
+    this.resetControls();
     this.won = true;
     this.physics.pause();
     this.add
@@ -554,6 +748,7 @@ class Game extends Base {
   }
   win() {
     if (this.won) return;
+    this.resetControls();
     this.won = true;
     this.physics.pause();
     const w = WORLDS[this.idx];
