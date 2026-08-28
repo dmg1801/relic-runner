@@ -236,6 +236,11 @@ class Game extends Base {
         frameHeight: 78,
       },
     );
+
+    this.load.image(
+  "maya-background",
+  "assets/worlds/maya/background.png"
+);
   }
   create() {
     this.input.addPointer(3);
@@ -304,11 +309,28 @@ class Game extends Base {
     this.physics.world.setBounds(0, 0, WORLD_W, HUD_TOP);
     this.makeTextures(world);
     // Placeholder background layers. Replace these rectangles with tileSprites/images in public/assets/worlds/<world>/.
-    this.add.rectangle(WORLD_W / 2, 180, WORLD_W, 360, world.bg).setDepth(-10);
-    for (let x = 200; x < WORLD_W; x += 500)
-      this.add
-        .triangle(x, 400, 0, 160, 130, 0, 260, 160, world.accent, 0.1)
-        .setDepth(-9);
+    
+   if (world.key === "maya") {
+  const bg = this.add.image(
+    0,
+    0,
+    "maya-background"
+  );
+
+  // La imagen empieza exactamente desde su esquina superior izquierda
+  bg.setOrigin(0, 0);
+
+  // Mantener proporciones y cubrir toda la altura jugable
+  const scale = HUD_TOP / bg.height;
+  bg.setScale(scale);
+
+  // Parallax horizontal suave.
+  // Verticalmente permanece fija.
+  bg.setScrollFactor(0.12, 0);
+
+  bg.setDepth(-10);
+}
+
     this.platforms = this.physics.add.staticGroup();
     const plat = (x: number, y: number, w: number) => {
       const r = this.add
@@ -849,17 +871,35 @@ class Settings extends Base {
     this.button(W / 2, 680, "← MENU", () => this.scene.start("Menu"), 180);
   }
 }
+
 new Phaser.Game({
   type: Phaser.AUTO,
   parent: "app",
   width: W,
   height: H,
+
   pixelArt: true,
+
+  render: {
+    antialias: false,
+    pixelArt: true,
+    roundPixels: true,
+  },
+
   backgroundColor: "#000",
+
   physics: {
     default: "arcade",
-    arcade: { gravity: { x: 0, y: 980 }, debug: false },
+    arcade: {
+      gravity: { x: 0, y: 980 },
+      debug: false,
+    },
   },
-  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
+
   scene: [Menu, Select, Worlds, Game, Museum, Settings],
 });
