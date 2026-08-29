@@ -275,7 +275,7 @@ this.load.spritesheet(
   "maya-jade-mask",
   "assets/worlds/maya/jade-mask.png",
   {
-    frameWidth: 85,
+    frameWidth: 86,
     frameHeight: 100,
   }
 );
