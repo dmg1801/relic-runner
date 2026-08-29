@@ -246,6 +246,21 @@ this.load.image(
   "arrow",
   "assets/projectiles/arrow.png"
 );
+
+this.load.image(
+  "maya-platform-left",
+  "assets/worlds/maya/platform-left.png"
+);
+
+this.load.image(
+  "maya-platform-middle",
+  "assets/worlds/maya/platform-middle.png"
+);
+
+this.load.image(
+  "maya-platform-right",
+  "assets/worlds/maya/platform-right.png"
+);
   }
   create() {
     this.input.addPointer(3);
@@ -338,12 +353,75 @@ this.load.image(
 
     this.platforms = this.physics.add.staticGroup();
     const plat = (x: number, y: number, w: number) => {
-      const r = this.add
-        .rectangle(x, y, w, 24, world.ground)
-        .setStrokeStyle(2, world.accent);
-      this.physics.add.existing(r, true);
-      this.platforms.add(r);
-    };
+
+  // =========================
+  // COLLIDER INVISIBLE
+  // =========================
+
+  const collider = this.add.rectangle(
+    x,
+    y,
+    w,
+    24,
+    0x000000,
+    0
+  );
+
+  this.physics.add.existing(collider, true);
+  this.platforms.add(collider);
+
+
+  // =========================
+  // ARTE MAYA
+  // =========================
+
+  if (world.key === "maya") {
+
+    const platformHeight = 55;
+    const capWidth = 40;
+
+    // IMPORTANTE:
+    // superficie superior real del collider
+    const visualY = y - 12;
+
+
+    const middle = this.add.tileSprite(
+      x,
+      visualY,
+      Math.max(1, w - capWidth * 2),
+      platformHeight,
+      "maya-platform-middle"
+    );
+
+    middle
+      .setOrigin(0.5, 0)
+      .setDepth(2);
+
+
+    const left = this.add.image(
+      x - w / 2,
+      visualY,
+      "maya-platform-left"
+    );
+
+    left
+      .setOrigin(0, 0)
+      .setDisplaySize(capWidth, platformHeight)
+      .setDepth(3);
+
+
+    const right = this.add.image(
+      x + w / 2,
+      visualY,
+      "maya-platform-right"
+    );
+
+    right
+      .setOrigin(1, 0)
+      .setDisplaySize(capWidth, platformHeight)
+      .setDepth(3);
+  }
+};
     // Long horizontal level + gaps + elevated routes.
     plat(350, 590, 700);
     plat(930, 590, 360);
