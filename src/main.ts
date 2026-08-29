@@ -261,6 +261,25 @@ this.load.image(
   "maya-platform-right",
   "assets/worlds/maya/platform-right.png"
 );
+
+this.load.spritesheet(
+  "maya-guardian-walk",
+  "assets/enemies/maya/stone-guardian-walk.png",
+  {
+    frameWidth: 65,
+    frameHeight: 100,
+  }
+);
+
+this.load.spritesheet(
+  "maya-jade-mask",
+  "assets/worlds/maya/jade-mask.png",
+  {
+    frameWidth: 85,
+    frameHeight: 100,
+  }
+);
+
   }
   create() {
     this.input.addPointer(3);
@@ -324,6 +343,36 @@ this.load.image(
         repeat: 0,
       });
     }
+
+    if (!this.anims.exists("maya-guardian-walk")) {
+  this.anims.create({
+    key: "maya-guardian-walk",
+    frames: this.anims.generateFrameNumbers(
+      "maya-guardian-walk",
+      {
+        start: 0,
+        end: 7,
+      }
+    ),
+    frameRate: 8,
+    repeat: -1,
+  });
+}
+
+if (!this.anims.exists("maya-jade-mask-glow")) {
+  this.anims.create({
+    key: "maya-jade-mask-glow",
+    frames: this.anims.generateFrameNumbers(
+      "maya-jade-mask",
+      {
+        start: 0,
+        end: 7,
+      }
+    ),
+    frameRate: 5,
+    repeat: -1,
+  });
+}
 
     this.cameras.main.setBackgroundColor(world.bg);
     this.physics.world.setBounds(0, 0, WORLD_W, HUD_TOP);
@@ -475,7 +524,16 @@ this.load.image(
         this,
       );
     });
-    const relic = this.physics.add.staticSprite(3480, 365, "relic");
+    const relic = this.physics.add.staticSprite(
+        3480,
+        365,
+        "maya-jade-mask",
+        0
+        );
+
+        relic.setScale(0.55);
+
+        relic.play("maya-jade-mask-glow");
     this.physics.add.overlap(
       this.player,
       relic,
@@ -505,7 +563,7 @@ this.load.image(
     this.createHUD(world);
   }
   makeTextures(world: (typeof WORLDS)[number]) {
-    ["hero", "relic", "enemy", "shot", "spike"].forEach((k) => {
+    ["hero", "relic", "shot", "spike"].forEach((k) => {
       if (this.textures.exists(k)) this.textures.remove(k);
     });
     const g = this.make.graphics({ x: 0, y: 0 }, false);
@@ -517,10 +575,6 @@ this.load.image(
     g.fillRect(0, 0, 38, 38);
     g.generateTexture("relic", 38, 38);
     g.clear();
-    g.fillStyle(0xa63832);
-    g.fillRect(0, 0, 30, 34);
-    g.generateTexture("enemy", 30, 34);
-    g.clear();
     g.fillStyle(0xffe06b);
     g.fillCircle(6, 6, 6);
     g.generateTexture("shot", 12, 12);
@@ -530,18 +584,32 @@ this.load.image(
     g.generateTexture("spike", 24, 22);
     g.destroy();
   }
-  spawnEnemy(x: number, y: number, dir: number) {
-    const e = this.enemies.create(
-      x,
-      y,
-      "enemy",
-    ) as Phaser.Physics.Arcade.Sprite;
-    e.setVelocityX(70 * dir)
-      .setBounce(1, 0)
-      .setCollideWorldBounds(false);
-    e.setData("dir", dir);
-    e.setData("originX", x);
-  }
+ spawnEnemy(x: number, y: number, dir: number) {
+  const e = this.enemies.create(
+    x,
+    y,
+    "maya-guardian-walk",
+    0
+  ) as Phaser.Physics.Arcade.Sprite;
+
+  // Ajustaremos esto visualmente después si hace falta
+  e.setScale(0.55);
+  e.setSize(38, 82);
+  e.setOffset(13, 16);
+
+  e.setVelocityX(70 * dir);
+  e.setBounce(0);
+  e.setCollideWorldBounds(false);
+
+  e.setData("dir", dir);
+  e.setData("originX", x);
+
+  // Empieza caminando
+  e.play("maya-guardian-walk");
+
+  // Nuestro PNG mira hacia la derecha.
+  e.setFlipX(dir < 0);
+}
   createHUD(world: (typeof WORLDS)[number]) {
     const hud = this.add
       .rectangle(W / 2, (HUD_TOP + H) / 2, W, H - HUD_TOP, 0x11100d, 0.98)
@@ -779,9 +847,14 @@ this.load.image(
       if (!o?.active) return true;
       const ox = o.getData("originX");
       if (Math.abs(o.x - ox) > 115) {
-        const d = o.x > ox ? -1 : 1;
-        o.setVelocityX(70 * d);
-      }
+  const d = o.x > ox ? -1 : 1;
+
+  o.setVelocityX(70 * d);
+  o.setData("dir", d);
+
+  // Girar visualmente al guardián
+  o.setFlipX(d < 0);
+}
       return true;
     });
     this.shots?.children.iterate((o: any) => {
