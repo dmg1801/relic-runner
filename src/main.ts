@@ -277,7 +277,18 @@ class Game extends Base {
         frameHeight: 100,
       },
     );
+
+    this.load.image(
+      "maya-spike",
+      "assets/worlds/maya/spike.png"
+    );
+
+    this.load.audio(
+      "arrow-shot",
+      "assets/sounds/arrow-shot.mp3"
+    );
   }
+
   create() {
     this.input.addPointer(3);
     const world = WORLDS[this.idx];
@@ -364,6 +375,8 @@ class Game extends Base {
         repeat: -1,
       });
     }
+
+
 
     this.cameras.main.setBackgroundColor(world.bg);
     this.physics.world.setBounds(0, 0, WORLD_W, HUD_TOP);
@@ -467,60 +480,86 @@ class Game extends Base {
     );
     this.shots = this.physics.add.group({ allowGravity: false });
     this.physics.add.collider(this.shots, this.platforms, (s) => s.destroy());
-   this.physics.add.overlap(
-  this.shots,
-  this.enemies,
-  (s, enemyObject) => {
+    this.physics.add.overlap(
+      this.shots,
+      this.enemies,
+      (s, enemyObject) => {
+
+         const arrow =
+      s as Phaser.Physics.Arcade.Sprite;
 
     const enemy =
       enemyObject as Phaser.Physics.Arcade.Sprite;
 
+    // Guardamos el punto exacto del impacto
+    const impactX = arrow.x;
+    const impactY = arrow.y;
+
+    // Efecto piedra/chispazo
+    this.arrowImpactEffect(
+      impactX,
+      impactY
+    );
+
     // La flecha desaparece
-    s.destroy();
+    arrow.destroy();
+        // Quitar 1 HP
+        const hp = enemy.getData("hp") ?? 4;
+        const newHp = hp - 1;
 
-    // Quitar 1 HP
-    const hp = enemy.getData("hp") ?? 4;
-    const newHp = hp - 1;
+        enemy.setData("hp", newHp);
 
-    enemy.setData("hp", newHp);
+        // Feedback provisional
+        enemy.setTint(0xffffff);
 
-    // Feedback provisional
-    enemy.setTint(0xffffff);
+        this.time.delayedCall(100, () => {
+          if (enemy.active) {
+            enemy.clearTint();
+          }
+        });
 
-    this.time.delayedCall(100, () => {
-      if (enemy.active) {
-        enemy.clearTint();
-      }
-    });
+        this.drawEnemyHealth(enemy);
 
-    this.drawEnemyHealth(enemy);
-
-    if (newHp <= 0) {
-
-      const bar =
-        enemy.getData("healthBar") as Phaser.GameObjects.Graphics;
-
-      if (bar) {
-        bar.destroy();
-      }
-
-      enemy.destroy();
-    }
-  },
-  undefined,
-  this,
-);
+        if (newHp <= 0) {
+          this.destroyGuardian(enemy);
+        }
+      },
+      undefined,
+      this,
+    );
     // spikes / traps
-    [820, 1320, 1900, 2480, 3030].forEach((x) => {
-      const spike = this.physics.add.staticSprite(x, 557, "spike");
-      this.physics.add.overlap(
-        this.player,
-        spike,
-        () => this.damage(),
-        undefined,
-        this,
-      );
-    });
+    // Maya spikes / traps
+[820, 1320, 1900, 2480, 3030].forEach((x) => {
+
+  const spike = this.physics.add.staticSprite(
+    x,
+    560,
+    "maya-spike"
+  );
+
+  // Ajusta esto según el tamaño final de tu PNG
+  spike.setScale(0.45);
+
+  // Hitbox más pequeña que la imagen
+  // para que solo hagan daño las puntas
+  spike.setSize(
+    spike.width * 0.45,
+    spike.height * 0.65
+  );
+
+  spike.setOffset(
+    spike.width * 0.175,
+    spike.height * 0.10
+  );
+
+  this.physics.add.overlap(
+    this.player,
+    spike,
+    () => this.damage(),
+    undefined,
+    this,
+  );
+});
     const relic = this.physics.add.staticSprite(3480, 365, "maya-jade-mask", 0);
 
     relic.setScale(0.40);
@@ -560,7 +599,7 @@ class Game extends Base {
     this.createHUD(world);
   }
   makeTextures(world: (typeof WORLDS)[number]) {
-    ["hero", "relic", "shot", "spike"].forEach((k) => {
+    ["hero", "relic", "shot"].forEach((k) => {
       if (this.textures.exists(k)) this.textures.remove(k);
     });
     const g = this.make.graphics({ x: 0, y: 0 }, false);
@@ -576,9 +615,6 @@ class Game extends Base {
     g.fillCircle(6, 6, 6);
     g.generateTexture("shot", 12, 12);
     g.clear();
-    g.fillStyle(0xd7d7d7);
-    g.fillTriangle(0, 22, 12, 0, 24, 22);
-    g.generateTexture("spike", 24, 22);
     g.destroy();
   }
   spawnEnemy(x: number, y: number, dir: number) {
@@ -656,6 +692,127 @@ drawEnemyHealth(enemy: Phaser.Physics.Arcade.Sprite) {
     width * percentage,
     height
   );
+}
+
+arrowImpactEffect(x: number, y: number) {
+  // Destello central
+  const flash = this.add
+    .circle(x, y, 8, 0xffe08a, 1)
+    .setDepth(50);
+
+  this.tweens.add({
+    targets: flash,
+    scale: 2,
+    alpha: 0,
+    duration: 120,
+    onComplete: () => flash.destroy(),
+  });
+
+  // Pequeños fragmentos de piedra
+  for (let i = 0; i < 6; i++) {
+    const fragment = this.add
+      .rectangle(
+        x,
+        y,
+        Phaser.Math.Between(2, 4),
+        Phaser.Math.Between(2, 4),
+        0xb9a37a
+      )
+      .setDepth(49);
+
+    const angle = Phaser.Math.FloatBetween(
+      0,
+      Math.PI * 2
+    );
+
+    const distance = Phaser.Math.Between(12, 25);
+
+    this.tweens.add({
+      targets: fragment,
+
+      x:
+        x +
+        Math.cos(angle) *
+          distance,
+
+      y:
+        y +
+        Math.sin(angle) *
+          distance,
+
+      alpha: 0,
+
+      duration: Phaser.Math.Between(
+        150,
+        250
+      ),
+
+      onComplete: () =>
+        fragment.destroy(),
+    });
+  }
+}
+
+destroyGuardian(enemy: Phaser.Physics.Arcade.Sprite) {
+  const x = enemy.x;
+  const y = enemy.y;
+
+  // Eliminar la barra de vida
+  const bar =
+    enemy.getData("healthBar") as Phaser.GameObjects.Graphics;
+
+  if (bar) {
+    bar.destroy();
+  }
+
+  // Evitar más colisiones inmediatamente
+  enemy.disableBody(true, true);
+
+  // Crear fragmentos de piedra
+  for (let i = 0; i < 10; i++) {
+    const size = Phaser.Math.Between(4, 9);
+
+    const fragment = this.add
+      .rectangle(
+        x + Phaser.Math.Between(-15, 15),
+        y + Phaser.Math.Between(-25, 20),
+        size,
+        size,
+        Phaser.Math.RND.pick([
+          0x82745e,
+          0xa08f70,
+          0x665d4e,
+          0x4f6654,
+        ])
+      )
+      .setDepth(20);
+
+    // Cada piedra sale en una dirección diferente
+    const targetX =
+      fragment.x + Phaser.Math.Between(-45, 45);
+
+    const targetY =
+      fragment.y + Phaser.Math.Between(25, 65);
+
+    this.tweens.add({
+      targets: fragment,
+
+      x: targetX,
+      y: targetY,
+
+      angle: Phaser.Math.Between(-180, 180),
+
+      alpha: 0,
+
+      duration: Phaser.Math.Between(350, 600),
+
+      ease: "Quad.easeIn",
+
+      onComplete: () => {
+        fragment.destroy();
+      },
+    });
+  }
 }
 
   createHUD(world: (typeof WORLDS)[number]) {
@@ -842,6 +999,11 @@ drawEnemyHealth(enemy: Phaser.Physics.Arcade.Sprite) {
     this.time.delayedCall(320, () => {
       if (this.paused || this.won || !this.player?.active) return;
 
+       // Sonido de liberación del arco
+      this.sound.play("arrow-shot", {
+        volume: 0.45
+      });
+
       const arrow = this.shots.create(
         this.player.x + this.facing * 32,
         this.player.y - 6,
@@ -855,6 +1017,9 @@ drawEnemyHealth(enemy: Phaser.Physics.Arcade.Sprite) {
       arrow.setFlipX(this.facing < 0);
 
       arrow.setData("born", this.time.now);
+      arrow.setData("startX", arrow.x);
+      arrow.setData("falling", false);
+      arrow.setData("direction", this.facing);
     });
 
     this.player.once(
@@ -951,10 +1116,64 @@ drawEnemyHealth(enemy: Phaser.Physics.Arcade.Sprite) {
 
       return true;
     });
+
     this.shots?.children.iterate((o: any) => {
-      if (o?.active && this.time.now - o.getData("born") > 1600) o.destroy();
-      return true;
-    });
+  if (!o?.active) return true;
+
+  const startX = o.getData("startX");
+  const distance = Math.abs(o.x - startX);
+  const direction = o.getData("direction");
+
+  // Primer tramo: vuelo recto
+  if (distance < 120) {
+    o.setVelocityY(0);
+  }
+
+  // A partir de 120 px empieza a caer
+  else {
+    const fallDistance = distance - 120;
+
+    // Cuanto más lejos llega, más rápido cae
+    const fallSpeed = Math.min(
+      80 + fallDistance * 2.5,
+      600
+    );
+
+    o.setVelocityY(fallSpeed);
+
+    // Pierde progresivamente velocidad horizontal
+    const horizontalSpeed = Math.max(
+      100,
+      430 - fallDistance * 1.2
+    );
+
+    o.setVelocityX(
+      direction * horizontalSpeed
+    );
+
+    // La punta de la flecha sigue la trayectoria
+    const angle = Phaser.Math.RadToDeg(
+      Math.atan2(
+        fallSpeed,
+        horizontalSpeed
+      )
+    );
+
+    o.setAngle(
+      direction < 0
+        ? -angle
+        : angle
+    );
+  }
+
+  // Destruirla si lleva demasiado tiempo volando
+  if (this.time.now - o.getData("born") > 2500) {
+    o.destroy();
+  }
+
+  return true;
+});
+
     if (this.player.y > HUD_TOP - 15) {
       if (this.godMode) {
         // Rescate automático en modo desarrollador
