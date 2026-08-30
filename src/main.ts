@@ -197,34 +197,109 @@ class Game extends Base {
     this.godMode = false;
   }
   preload() {
-
-     // =========================
-  // LOADING SCREEN
-  // =========================
+    
+  // ==========================================
+  // PANTALLA DE CARGA
+  // ==========================================
 
   this.cameras.main.setBackgroundColor("#0b1710");
 
   const world = WORLDS[this.idx];
 
+  // Todo lo perteneciente al loader vive aquí.
+  // Cuando termine la carga destruiremos este container.
   const loadingScreen = this.add.container(0, 0);
 
+
+  // ==========================================
+  // BRÚJULA ANIMADA
+  // ==========================================
+
+  const compass = this.add.container(
+    W / 2,
+    210
+  );
+
+  // Círculo exterior
+  const compassRing = this.add.circle(
+    0,
+    0,
+    20,
+    0x000000,
+    0
+  );
+
+  compassRing.setStrokeStyle(
+    2,
+    0xd6b85a,
+    1
+  );
+
+  // Pequeño círculo central
+  const compassCenter = this.add.circle(
+    0,
+    0,
+    3,
+    0xd6b85a
+  );
+
+  // Aguja
+  const needle = this.add.triangle(
+    0,
+    0,
+
+    0, -15,
+    -5, 8,
+    5, 8,
+
+    0xd6b85a
+  );
+
+  compass.add([
+    compassRing,
+    needle,
+    compassCenter
+  ]);
+
+  loadingScreen.add(compass);
+
+
+  // ==========================================
+  // TEXTOS
+  // ==========================================
+
   const title = this.add
-    .text(W / 2, 260, "PREPARING EXPEDITION", {
-      fontFamily: "monospace",
-      fontSize: "22px",
-      color: "#e7c66e",
-      stroke: "#000000",
-      strokeThickness: 4,
-    })
+    .text(
+      W / 2,
+      260,
+      "PREPARING EXPEDITION",
+      {
+        fontFamily: "monospace",
+        fontSize: "22px",
+        color: "#e7c66e",
+        stroke: "#000000",
+        strokeThickness: 4,
+      }
+    )
     .setOrigin(0.5);
 
   const worldText = this.add
-    .text(W / 2, 300, world.name, {
-      fontFamily: "monospace",
-      fontSize: "15px",
-      color: "#ffffff",
-    })
+    .text(
+      W / 2,
+      305,
+      world.name,
+      {
+        fontFamily: "monospace",
+        fontSize: "15px",
+        color: "#ffffff",
+      }
+    )
     .setOrigin(0.5);
+
+
+  // ==========================================
+  // BARRA DE PROGRESO
+  // ==========================================
 
   const barBackground = this.add.rectangle(
     W / 2,
@@ -245,14 +320,20 @@ class Game extends Base {
     .setOrigin(0, 0.5);
 
   const loadingText = this.add
-    .text(W / 2, 405, "0%", {
-      fontFamily: "monospace",
-      fontSize: "14px",
-      color: "#d9d1bc",
-    })
+    .text(
+      W / 2,
+      405,
+      "0%",
+      {
+        fontFamily: "monospace",
+        fontSize: "14px",
+        color: "#d9d1bc",
+      }
+    )
     .setOrigin(0.5);
 
-  // Todo pertenece a la pantalla de carga
+
+  // Añadimos todo al loader
   loadingScreen.add([
     title,
     worldText,
@@ -261,21 +342,86 @@ class Game extends Base {
     loadingText,
   ]);
 
-  this.load.on("progress", (value: number) => {
-    progressBar.width = 296 * value;
 
-    loadingText.setText(
-      `${Math.floor(value * 100)}%`
-    );
+  // ==========================================
+  // ANIMACIÓN DE LA BRÚJULA
+  // ==========================================
+
+  const compassTween = this.tweens.add({
+    targets: needle,
+
+    angle: {
+      from: -35,
+      to: 35
+    },
+
+    duration: 450,
+
+    yoyo: true,
+    repeat: -1,
+
+    ease: "Sine.easeInOut"
   });
+
+
+  // ==========================================
+  // PUNTOS ANIMADOS ...
+  // ==========================================
+
+  let dots = 0;
+
+  const loadingTimer = this.time.addEvent({
+    delay: 350,
+    loop: true,
+
+    callback: () => {
+      dots = (dots + 1) % 4;
+
+      title.setText(
+        "PREPARING EXPEDITION" +
+        ".".repeat(dots)
+      );
+    }
+  });
+
+
+  // ==========================================
+  // PROGRESO REAL DE PHASER
+  // ==========================================
+
+  this.load.on(
+    "progress",
+    (value: number) => {
+
+      progressBar.width =
+        296 * value;
+
+      loadingText.setText(
+        `${Math.floor(value * 100)}%`
+      );
+    }
+  );
+
+
+  // ==========================================
+  // CUANDO TERMINA LA CARGA
+  // ==========================================
 
   this.load.once("complete", () => {
-    loadingText.setText("EXPEDITION READY");
 
-    // Destruye TODO el loader antes de comenzar
-    // realmente el nivel.
+    loadingTimer.destroy();
+
+    compassTween.stop();
+
     loadingScreen.destroy(true);
   });
+
+
+  // ==========================================
+  // A PARTIR DE AQUÍ:
+  // TUS ASSETS DE SIEMPRE
+  // ==========================================
+
 
     this.load.spritesheet(
       "explorer-run",
