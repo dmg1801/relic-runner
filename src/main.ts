@@ -173,6 +173,7 @@ class Game extends Base {
   hudLives!: Phaser.GameObjects.Text;
   soundLabel!: Phaser.GameObjects.Text;
   godLabel!: Phaser.GameObjects.Text;
+  ambient?: Phaser.Sound.BaseSound;
 
   isShooting = false;
   godMode = false;
@@ -287,11 +288,54 @@ class Game extends Base {
       "arrow-shot",
       "assets/sounds/arrow-shot.mp3"
     );
+
+    this.load.audio(
+      "arrow-impact",
+      "assets/sounds/arrow-impact.mp3"
+    );
+
+    this.load.audio(
+    "guardian-crumble",
+    "assets/sounds/guardian-crumble.mp3"
+  );
+
+  this.load.audio(
+  "jump",
+  "assets/sounds/jump.wav"
+);
+
+this.load.audio(
+  "player-hurt",
+  "assets/sounds/player-hurt.mp3"
+);
+
+this.load.audio(
+  "maya-jungle-ambience",
+  "assets/sounds/maya-jungle-ambience.wav"
+);
   }
 
   create() {
     this.input.addPointer(3);
     const world = WORLDS[this.idx];
+
+    // Aplicar la preferencia de sonido guardada
+this.sound.mute =
+  localStorage.getItem("music") === "off";
+
+  // Ambiente propio del mundo Maya
+  if (world.key === "maya") {
+    this.ambient = this.sound.add(
+      "maya-jungle-ambience",
+      {
+        loop: true,
+        volume: 0.20
+      }
+    );
+
+    this.ambient.play();
+  }
+
     if (!this.anims.exists("explorer-run")) {
       this.anims.create({
         key: "explorer-run",
@@ -501,6 +545,12 @@ class Game extends Base {
       impactY
     );
 
+    // Impacto sonoro contra piedra
+    this.sound.play("arrow-impact", {
+      volume: 0.5
+    });
+
+
     // La flecha desaparece
     arrow.destroy();
         // Quitar 1 HP
@@ -581,7 +631,14 @@ class Game extends Base {
 
     this.input.keyboard!.addKey("A");
     this.input.keyboard!.addKey("D");
-    this.input.keyboard!.on("keydown-SPACE", () => this.jump());
+    this.input.keyboard!.on("keydown-SPACE", () => {
+      this.jump();
+    });
+
+    this.input.keyboard!.on("keydown-UP", () => {
+      this.jump();
+    });
+
     this.input.keyboard!.on("keydown-F", () => this.fire());
     this.input.keyboard!.on("keydown-ESC", () => this.pauseMenu());
     this.input.keyboard!.on("keydown-G", () => {
@@ -589,10 +646,26 @@ class Game extends Base {
     });
 
     this.game.events.on(Phaser.Core.Events.BLUR, this.resetControls, this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.game.events.off(Phaser.Core.Events.BLUR, this.resetControls, this);
-      this.resetControls();
-    });
+    this.events.once(
+      Phaser.Scenes.Events.SHUTDOWN,
+      () => {
+        this.game.events.off(
+          Phaser.Core.Events.BLUR,
+          this.resetControls,
+          this
+        );
+
+        this.resetControls();
+
+        // Detener el ambiente al abandonar
+        // la expedición
+        if (this.ambient) {
+          this.ambient.stop();
+          this.ambient.destroy();
+          this.ambient = undefined;
+        }
+      }
+    );
     this.cameras.main.setBounds(0, 0, WORLD_W, H);
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1, 0, 45);
     this.cameras.main.setDeadzone(90, 120);
@@ -756,6 +829,11 @@ arrowImpactEffect(x: number, y: number) {
 destroyGuardian(enemy: Phaser.Physics.Arcade.Sprite) {
   const x = enemy.x;
   const y = enemy.y;
+
+   // Sonido de piedra desmoronándose
+  this.sound.play("guardian-crumble", {
+    volume: 0.65
+  });
 
   // Eliminar la barra de vida
   const bar =
@@ -976,10 +1054,23 @@ destroyGuardian(enemy: Phaser.Physics.Arcade.Sprite) {
     if (this.player?.active) this.player.setVelocityX(0);
   }
 
-  jump() {
-    if (!this.paused && this.player.body?.blocked.down)
-      this.player.setVelocityY(-600);
+jump() {
+  if (
+    this.paused ||
+    !this.player.body?.blocked.down
+  ) {
+    return;
   }
+
+  // El sonido se solicita inmediatamente
+  this.sound.play("jump", {
+    volume: 0.6
+  });
+
+  // El salto ocurre en el mismo evento
+  this.player.setVelocityY(-600);
+}
+
   fire() {
     if (
       this.paused ||
@@ -1030,30 +1121,40 @@ destroyGuardian(enemy: Phaser.Physics.Arcade.Sprite) {
     );
   }
 
-  damage() {
-    if (this.godMode) return;
+ damage() {
+  if (this.godMode) return;
 
-    if (this.invulnerable || this.won) return;
+  if (this.invulnerable || this.won) return;
 
-    this.lives--;
-    this.updateLives();
+  // Sonido al recibir daño
+  this.sound.play("player-hurt", {
+    volume: 0.55
+  });
 
-    if (this.lives <= 0) {
-      this.gameOver();
-      return;
-    }
+  this.lives--;
+  this.updateLives();
 
-    this.invulnerable = true;
-    this.player.setTint(0xff7777);
-    this.player.setVelocity(-this.facing * 180, -260);
-
-    this.time.delayedCall(1200, () => {
-      if (this.player?.active) {
-        this.invulnerable = false;
-        this.player.clearTint();
-      }
-    });
+  if (this.lives <= 0) {
+    this.gameOver();
+    return;
   }
+
+  this.invulnerable = true;
+
+  this.player.setTint(0xff7777);
+  this.player.setVelocity(
+    -this.facing * 180,
+    -260
+  );
+
+  this.time.delayedCall(1200, () => {
+    if (this.player?.active) {
+      this.invulnerable = false;
+      this.player.clearTint();
+    }
+  });
+}
+
   updateLives() {
     this.hudLives.setText(
       Array.from({ length: 3 }, (_, i) => (i < this.lives ? "♥" : "♡")).join(
@@ -1098,7 +1199,6 @@ destroyGuardian(enemy: Phaser.Physics.Arcade.Sprite) {
       }
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.up)) this.jump();
     this.enemies?.children.iterate((o: any) => {
       if (!o?.active) return true;
       const ox = o.getData("originX");
