@@ -172,7 +172,10 @@ class Game extends Base {
   won = false;
   hudLives!: Phaser.GameObjects.Text;
   soundLabel!: Phaser.GameObjects.Text;
+  godLabel!: Phaser.GameObjects.Text;
+
   isShooting = false;
+  godMode = false;
   init(d: { idx: number }) {
     this.idx = d.idx ?? 0;
 
@@ -190,6 +193,7 @@ class Game extends Base {
 
     this.won = false;
     this.isShooting = false;
+    this.godMode = false;
   }
   preload() {
     this.load.spritesheet(
@@ -237,49 +241,42 @@ class Game extends Base {
       },
     );
 
+    this.load.image("maya-background", "assets/worlds/maya/background.png");
+
+    this.load.image("arrow", "assets/projectiles/arrow.png");
+
     this.load.image(
-  "maya-background",
-  "assets/worlds/maya/background.png"
-);
+      "maya-platform-left",
+      "assets/worlds/maya/platform-left.png",
+    );
 
-this.load.image(
-  "arrow",
-  "assets/projectiles/arrow.png"
-);
+    this.load.image(
+      "maya-platform-middle",
+      "assets/worlds/maya/platform-middle.png",
+    );
 
-this.load.image(
-  "maya-platform-left",
-  "assets/worlds/maya/platform-left.png"
-);
+    this.load.image(
+      "maya-platform-right",
+      "assets/worlds/maya/platform-right.png",
+    );
 
-this.load.image(
-  "maya-platform-middle",
-  "assets/worlds/maya/platform-middle.png"
-);
+    this.load.spritesheet(
+      "maya-guardian-walk",
+      "assets/enemies/maya/stone-guardian-walk.png",
+      {
+        frameWidth: 65,
+        frameHeight: 100,
+      },
+    );
 
-this.load.image(
-  "maya-platform-right",
-  "assets/worlds/maya/platform-right.png"
-);
-
-this.load.spritesheet(
-  "maya-guardian-walk",
-  "assets/enemies/maya/stone-guardian-walk.png",
-  {
-    frameWidth: 65,
-    frameHeight: 100,
-  }
-);
-
-this.load.spritesheet(
-  "maya-jade-mask",
-  "assets/worlds/maya/jade-mask.png",
-  {
-    frameWidth: 86,
-    frameHeight: 100,
-  }
-);
-
+    this.load.spritesheet(
+      "maya-jade-mask",
+      "assets/worlds/maya/jade-mask.png",
+      {
+        frameWidth: 86,
+        frameHeight: 100,
+      },
+    );
   }
   create() {
     this.input.addPointer(3);
@@ -345,132 +342,99 @@ this.load.spritesheet(
     }
 
     if (!this.anims.exists("maya-guardian-walk")) {
-  this.anims.create({
-    key: "maya-guardian-walk",
-    frames: this.anims.generateFrameNumbers(
-      "maya-guardian-walk",
-      {
-        start: 0,
-        end: 7,
-      }
-    ),
-    frameRate: 8,
-    repeat: -1,
-  });
-}
+      this.anims.create({
+        key: "maya-guardian-walk",
+        frames: this.anims.generateFrameNumbers("maya-guardian-walk", {
+          start: 0,
+          end: 7,
+        }),
+        frameRate: 8,
+        repeat: -1,
+      });
+    }
 
-if (!this.anims.exists("maya-jade-mask-glow")) {
-  this.anims.create({
-    key: "maya-jade-mask-glow",
-    frames: this.anims.generateFrameNumbers(
-      "maya-jade-mask",
-      {
-        start: 0,
-        end: 7,
-      }
-    ),
-    frameRate: 5,
-    repeat: -1,
-  });
-}
+    if (!this.anims.exists("maya-jade-mask-glow")) {
+      this.anims.create({
+        key: "maya-jade-mask-glow",
+        frames: this.anims.generateFrameNumbers("maya-jade-mask", {
+          start: 0,
+          end: 7,
+        }),
+        frameRate: 5,
+        repeat: -1,
+      });
+    }
 
     this.cameras.main.setBackgroundColor(world.bg);
     this.physics.world.setBounds(0, 0, WORLD_W, HUD_TOP);
     this.makeTextures(world);
     // Placeholder background layers. Replace these rectangles with tileSprites/images in public/assets/worlds/<world>/.
-    
-   if (world.key === "maya") {
-  const bg = this.add.image(
-    0,
-    0,
-    "maya-background"
-  );
 
-  // La imagen empieza exactamente desde su esquina superior izquierda
-  bg.setOrigin(0, 0);
+    if (world.key === "maya") {
+      const bg = this.add.image(0, 0, "maya-background");
 
-  // Mantener proporciones y cubrir toda la altura jugable
-  const scale = HUD_TOP / bg.height;
-  bg.setScale(scale);
+      // La imagen empieza exactamente desde su esquina superior izquierda
+      bg.setOrigin(0, 0);
 
-  // Parallax horizontal suave.
-  // Verticalmente permanece fija.
-  bg.setScrollFactor(0.12, 0);
+      // Mantener proporciones y cubrir toda la altura jugable
+      const scale = HUD_TOP / bg.height;
+      bg.setScale(scale);
 
-  bg.setDepth(-10);
-}
+      // Parallax horizontal suave.
+      // Verticalmente permanece fija.
+      bg.setScrollFactor(0.12, 0);
+
+      bg.setDepth(-10);
+    }
 
     this.platforms = this.physics.add.staticGroup();
     const plat = (x: number, y: number, w: number) => {
+      // =========================
+      // COLLIDER INVISIBLE
+      // =========================
 
-  // =========================
-  // COLLIDER INVISIBLE
-  // =========================
+      const collider = this.add.rectangle(x, y, w, 24, 0x000000, 0);
 
-  const collider = this.add.rectangle(
-    x,
-    y,
-    w,
-    24,
-    0x000000,
-    0
-  );
+      this.physics.add.existing(collider, true);
+      this.platforms.add(collider);
 
-  this.physics.add.existing(collider, true);
-  this.platforms.add(collider);
+      // =========================
+      // ARTE MAYA
+      // =========================
 
+      if (world.key === "maya") {
+        const platformHeight = 55;
+        const capWidth = 40;
 
-  // =========================
-  // ARTE MAYA
-  // =========================
+        // IMPORTANTE:
+        // superficie superior real del collider
+        const visualY = y - 12;
 
-  if (world.key === "maya") {
+        const middle = this.add.tileSprite(
+          x,
+          visualY,
+          Math.max(1, w - capWidth * 2),
+          platformHeight,
+          "maya-platform-middle",
+        );
 
-    const platformHeight = 55;
-    const capWidth = 40;
+        middle.setOrigin(0.5, 0).setDepth(2);
 
-    // IMPORTANTE:
-    // superficie superior real del collider
-    const visualY = y - 12;
+        const left = this.add.image(x - w / 2, visualY, "maya-platform-left");
 
+        left
+          .setOrigin(0, 0)
+          .setDisplaySize(capWidth, platformHeight)
+          .setDepth(3);
 
-    const middle = this.add.tileSprite(
-      x,
-      visualY,
-      Math.max(1, w - capWidth * 2),
-      platformHeight,
-      "maya-platform-middle"
-    );
+        const right = this.add.image(x + w / 2, visualY, "maya-platform-right");
 
-    middle
-      .setOrigin(0.5, 0)
-      .setDepth(2);
-
-
-    const left = this.add.image(
-      x - w / 2,
-      visualY,
-      "maya-platform-left"
-    );
-
-    left
-      .setOrigin(0, 0)
-      .setDisplaySize(capWidth, platformHeight)
-      .setDepth(3);
-
-
-    const right = this.add.image(
-      x + w / 2,
-      visualY,
-      "maya-platform-right"
-    );
-
-    right
-      .setOrigin(1, 0)
-      .setDisplaySize(capWidth, platformHeight)
-      .setDepth(3);
-  }
-};
+        right
+          .setOrigin(1, 0)
+          .setDisplaySize(capWidth, platformHeight)
+          .setDepth(3);
+      }
+    };
     // Long horizontal level + gaps + elevated routes.
     plat(350, 590, 700);
     plat(930, 590, 360);
@@ -503,16 +467,49 @@ if (!this.anims.exists("maya-jade-mask-glow")) {
     );
     this.shots = this.physics.add.group({ allowGravity: false });
     this.physics.add.collider(this.shots, this.platforms, (s) => s.destroy());
-    this.physics.add.overlap(
-      this.shots,
-      this.enemies,
-      (s, e) => {
-        s.destroy();
-        e.destroy();
-      },
-      undefined,
-      this,
-    );
+   this.physics.add.overlap(
+  this.shots,
+  this.enemies,
+  (s, enemyObject) => {
+
+    const enemy =
+      enemyObject as Phaser.Physics.Arcade.Sprite;
+
+    // La flecha desaparece
+    s.destroy();
+
+    // Quitar 1 HP
+    const hp = enemy.getData("hp") ?? 4;
+    const newHp = hp - 1;
+
+    enemy.setData("hp", newHp);
+
+    // Feedback provisional
+    enemy.setTint(0xffffff);
+
+    this.time.delayedCall(100, () => {
+      if (enemy.active) {
+        enemy.clearTint();
+      }
+    });
+
+    this.drawEnemyHealth(enemy);
+
+    if (newHp <= 0) {
+
+      const bar =
+        enemy.getData("healthBar") as Phaser.GameObjects.Graphics;
+
+      if (bar) {
+        bar.destroy();
+      }
+
+      enemy.destroy();
+    }
+  },
+  undefined,
+  this,
+);
     // spikes / traps
     [820, 1320, 1900, 2480, 3030].forEach((x) => {
       const spike = this.physics.add.staticSprite(x, 557, "spike");
@@ -524,16 +521,13 @@ if (!this.anims.exists("maya-jade-mask-glow")) {
         this,
       );
     });
-    const relic = this.physics.add.staticSprite(
-        3480,
-        365,
-        "maya-jade-mask",
-        0
-        );
+    const relic = this.physics.add.staticSprite(3480, 365, "maya-jade-mask", 0);
 
-        relic.setScale(0.55);
+    relic.setScale(0.40);
+    relic.setSize(35, 50);
+    relic.setOffset(20, 20);
 
-        relic.play("maya-jade-mask-glow");
+    relic.play("maya-jade-mask-glow");
     this.physics.add.overlap(
       this.player,
       relic,
@@ -551,6 +545,9 @@ if (!this.anims.exists("maya-jade-mask-glow")) {
     this.input.keyboard!.on("keydown-SPACE", () => this.jump());
     this.input.keyboard!.on("keydown-F", () => this.fire());
     this.input.keyboard!.on("keydown-ESC", () => this.pauseMenu());
+    this.input.keyboard!.on("keydown-G", () => {
+      this.toggleGodMode();
+    });
 
     this.game.events.on(Phaser.Core.Events.BLUR, this.resetControls, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -584,32 +581,83 @@ if (!this.anims.exists("maya-jade-mask-glow")) {
     g.generateTexture("spike", 24, 22);
     g.destroy();
   }
- spawnEnemy(x: number, y: number, dir: number) {
-  const e = this.enemies.create(
-    x,
-    y,
-    "maya-guardian-walk",
-    0
-  ) as Phaser.Physics.Arcade.Sprite;
+  spawnEnemy(x: number, y: number, dir: number) {
+    const e = this.enemies.create(
+      x,
+      y,
+      "maya-guardian-walk",
+      0,
+    ) as Phaser.Physics.Arcade.Sprite;
 
-  // Ajustaremos esto visualmente después si hace falta
-  e.setScale(0.55);
-  e.setSize(38, 82);
-  e.setOffset(13, 16);
+    // Ajustaremos esto visualmente después si hace falta
+    e.setScale(0.55);
+    e.setSize(38, 82);
+    e.setOffset(13, 16);
 
-  e.setVelocityX(70 * dir);
-  e.setBounce(0);
-  e.setCollideWorldBounds(false);
+    e.setVelocityX(70 * dir);
+    e.setBounce(0);
+    e.setCollideWorldBounds(false);
 
-  e.setData("dir", dir);
-  e.setData("originX", x);
+    e.setData("dir", dir);
+    e.setData("originX", x);
+    e.setData("hp", 4);
+    e.setData("maxHp", 4);
 
-  // Empieza caminando
-  e.play("maya-guardian-walk");
+    const healthBar = this.add.graphics();
+    e.setData("healthBar", healthBar);
 
-  // Nuestro PNG mira hacia la derecha.
-  e.setFlipX(dir < 0);
+    this.drawEnemyHealth(e);
+    
+    // Empieza caminando
+    e.play("maya-guardian-walk");
+
+    // Nuestro PNG mira hacia la derecha.
+    e.setFlipX(dir < 0);
+
+  }
+
+drawEnemyHealth(enemy: Phaser.Physics.Arcade.Sprite) {
+  const bar = enemy.getData("healthBar") as Phaser.GameObjects.Graphics;
+
+  if (!bar) return;
+
+  const hp = enemy.getData("hp") ?? 4;
+  const maxHp = enemy.getData("maxHp") ?? 4;
+
+  const width = 34;
+  const height = 5;
+
+  const percentage = hp / maxHp;
+
+  bar.clear();
+
+  // Fondo
+  bar.fillStyle(0x111111, 0.9);
+  bar.fillRect(
+    enemy.x - width / 2,
+    enemy.y - 40,
+    width,
+    height
+  );
+
+  let color = 0x44cc44;
+
+  if (percentage <= 0.25) {
+    color = 0xff3333; // rojo
+  } else if (percentage <= 0.5) {
+    color = 0xffcc33; // amarillo
+  }
+
+  bar.fillStyle(color, 1);
+
+  bar.fillRect(
+    enemy.x - width / 2,
+    enemy.y - 40,
+    width * percentage,
+    height
+  );
 }
+
   createHUD(world: (typeof WORLDS)[number]) {
     const hud = this.add
       .rectangle(W / 2, (HUD_TOP + H) / 2, W, H - HUD_TOP, 0x11100d, 0.98)
@@ -628,7 +676,8 @@ if (!this.anims.exists("maya-jade-mask-glow")) {
       })
       .setScrollFactor(0)
       .setDepth(102);
-    this.add
+
+    const worldLabel = this.add
       .text(W / 2, 638, world.name, {
         fontFamily: "monospace",
         fontSize: "14px",
@@ -636,7 +685,39 @@ if (!this.anims.exists("maya-jade-mask-glow")) {
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
-      .setDepth(102);
+      .setDepth(102)
+      .setInteractive();
+
+    let secretTaps = 0;
+    let lastSecretTap = 0;
+
+    worldLabel.on("pointerdown", () => {
+      // Si tardaste más de 2 segundos,
+      // comenzamos la secuencia de nuevo.
+      if (this.time.now - lastSecretTap > 2000) {
+        secretTaps = 0;
+      }
+
+      lastSecretTap = this.time.now;
+      secretTaps++;
+
+      if (secretTaps >= 5) {
+        secretTaps = 0;
+        this.toggleGodMode();
+      }
+    });
+
+    this.godLabel = this.add
+      .text(W / 2, 660, "DEV MODE", {
+        fontFamily: "monospace",
+        fontSize: "10px",
+        color: "#ffd700",
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(150)
+      .setVisible(false);
+
     this.touchButton(
       55,
       710,
@@ -742,62 +823,65 @@ if (!this.anims.exists("maya-jade-mask-glow")) {
     if (!this.paused && this.player.body?.blocked.down)
       this.player.setVelocityY(-600);
   }
- fire() {
-  if (
-    this.paused ||
-    this.won ||
-    this.isShooting ||
-    this.time.now - this.lastShot < 300
-  ) return;
-
-  this.lastShot = this.time.now;
-  this.isShooting = true;
-
-  // Empieza la animación del arco
-  this.player.play("explorer-shoot", true);
-
-  // Esperamos hasta el momento en que suelta la cuerda
-  this.time.delayedCall(320, () => {
-
+  fire() {
     if (
       this.paused ||
       this.won ||
-      !this.player?.active
-    ) return;
+      this.isShooting ||
+      this.time.now - this.lastShot < 300
+    )
+      return;
 
-    const arrow = this.shots.create(
-      this.player.x + this.facing * 32,
-      this.player.y - 6,
-      "arrow"
-    ) as Phaser.Physics.Arcade.Sprite;
+    this.lastShot = this.time.now;
+    this.isShooting = true;
 
-    arrow.setVelocityX(this.facing * 430);
+    // Empieza la animación del arco
+    this.player.play("explorer-shoot", true);
 
-    // La imagen original mira →
-    // Si disparamos hacia ←, la invertimos.
-    arrow.setFlipX(this.facing < 0);
+    // Esperamos hasta el momento en que suelta la cuerda
+    this.time.delayedCall(320, () => {
+      if (this.paused || this.won || !this.player?.active) return;
 
-    arrow.setData("born", this.time.now);
-  });
+      const arrow = this.shots.create(
+        this.player.x + this.facing * 32,
+        this.player.y - 6,
+        "arrow",
+      ) as Phaser.Physics.Arcade.Sprite;
 
-  this.player.once(
-    Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + "explorer-shoot",
-    () => {
-      this.isShooting = false;
-    }
-  );
-}
+      arrow.setVelocityX(this.facing * 430);
+
+      // La imagen original mira →
+      // Si disparamos hacia ←, la invertimos.
+      arrow.setFlipX(this.facing < 0);
+
+      arrow.setData("born", this.time.now);
+    });
+
+    this.player.once(
+      Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + "explorer-shoot",
+      () => {
+        this.isShooting = false;
+      },
+    );
+  }
+
   damage() {
+    if (this.godMode) return;
+
     if (this.invulnerable || this.won) return;
+
     this.lives--;
     this.updateLives();
+
     if (this.lives <= 0) {
       this.gameOver();
       return;
     }
+
     this.invulnerable = true;
     this.player.setTint(0xff7777);
     this.player.setVelocity(-this.facing * 180, -260);
+
     this.time.delayedCall(1200, () => {
       if (this.player?.active) {
         this.invulnerable = false;
@@ -821,8 +905,13 @@ if (!this.anims.exists("maya-jade-mask-glow")) {
     const moveRight = this.right || this.cursors.right.isDown || keyD.isDown;
 
     if (moveLeft !== moveRight) {
-      if (moveLeft) { vx = -250; this.facing = -1; }
-      else { vx = 250; this.facing = 1; }
+      if (moveLeft) {
+        vx = -250;
+        this.facing = -1;
+      } else {
+        vx = 250;
+        this.facing = 1;
+      }
     }
     this.player.setVelocityX(vx);
     if (vx < 0) this.player.setFlipX(true);
@@ -832,9 +921,11 @@ if (!this.anims.exists("maya-jade-mask-glow")) {
     const velocityY = this.player.body?.velocity.y ?? 0;
     if (!this.isShooting) {
       if (!onGround && velocityY < 0) {
-        if (this.player.anims.currentAnim?.key !== "explorer-jump") this.player.play("explorer-jump");
+        if (this.player.anims.currentAnim?.key !== "explorer-jump")
+          this.player.play("explorer-jump");
       } else if (!onGround && velocityY >= 0) {
-        if (this.player.anims.currentAnim?.key !== "explorer-fall") this.player.play("explorer-fall");
+        if (this.player.anims.currentAnim?.key !== "explorer-fall")
+          this.player.play("explorer-fall");
       } else if (vx !== 0) {
         this.player.play("explorer-run", true);
       } else {
@@ -847,25 +938,48 @@ if (!this.anims.exists("maya-jade-mask-glow")) {
       if (!o?.active) return true;
       const ox = o.getData("originX");
       if (Math.abs(o.x - ox) > 115) {
-  const d = o.x > ox ? -1 : 1;
+        const d = o.x > ox ? -1 : 1;
 
-  o.setVelocityX(70 * d);
-  o.setData("dir", d);
+        o.setVelocityX(70 * d);
+        o.setData("dir", d);
 
-  // Girar visualmente al guardián
-  o.setFlipX(d < 0);
-}
+        // Girar visualmente al guardián
+        o.setFlipX(d < 0);
+      }
+
+      this.drawEnemyHealth(o);
+
       return true;
     });
     this.shots?.children.iterate((o: any) => {
       if (o?.active && this.time.now - o.getData("born") > 1600) o.destroy();
       return true;
     });
-    if (this.player.y > HUD_TOP - 15) this.damage();
+    if (this.player.y > HUD_TOP - 15) {
+      if (this.godMode) {
+        // Rescate automático en modo desarrollador
+        this.player.setPosition(Math.max(90, this.player.x - 100), 500);
+
+        this.player.setVelocity(0, 0);
+      } else {
+        this.damage();
+      }
+    }
     if (this.firing) {
       this.fire();
     }
   }
+
+  toggleGodMode() {
+    this.godMode = !this.godMode;
+
+    if (this.godLabel) {
+      this.godLabel.setVisible(this.godMode);
+    }
+
+    console.log(this.godMode ? "GOD MODE ACTIVATED" : "GOD MODE DEACTIVATED");
+  }
+
   toggleSound() {
     const off = localStorage.getItem("music") === "off";
     localStorage.setItem("music", off ? "on" : "off");
