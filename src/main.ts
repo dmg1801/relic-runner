@@ -197,6 +197,86 @@ class Game extends Base {
     this.godMode = false;
   }
   preload() {
+
+     // =========================
+  // LOADING SCREEN
+  // =========================
+
+  this.cameras.main.setBackgroundColor("#0b1710");
+
+  const world = WORLDS[this.idx];
+
+  const loadingScreen = this.add.container(0, 0);
+
+  const title = this.add
+    .text(W / 2, 260, "PREPARING EXPEDITION", {
+      fontFamily: "monospace",
+      fontSize: "22px",
+      color: "#e7c66e",
+      stroke: "#000000",
+      strokeThickness: 4,
+    })
+    .setOrigin(0.5);
+
+  const worldText = this.add
+    .text(W / 2, 300, world.name, {
+      fontFamily: "monospace",
+      fontSize: "15px",
+      color: "#ffffff",
+    })
+    .setOrigin(0.5);
+
+  const barBackground = this.add.rectangle(
+    W / 2,
+    370,
+    300,
+    16,
+    0x181818
+  );
+
+  const progressBar = this.add
+    .rectangle(
+      W / 2 - 148,
+      370,
+      0,
+      10,
+      0xd6b85a
+    )
+    .setOrigin(0, 0.5);
+
+  const loadingText = this.add
+    .text(W / 2, 405, "0%", {
+      fontFamily: "monospace",
+      fontSize: "14px",
+      color: "#d9d1bc",
+    })
+    .setOrigin(0.5);
+
+  // Todo pertenece a la pantalla de carga
+  loadingScreen.add([
+    title,
+    worldText,
+    barBackground,
+    progressBar,
+    loadingText,
+  ]);
+
+  this.load.on("progress", (value: number) => {
+    progressBar.width = 296 * value;
+
+    loadingText.setText(
+      `${Math.floor(value * 100)}%`
+    );
+  });
+
+  this.load.once("complete", () => {
+    loadingText.setText("EXPEDITION READY");
+
+    // Destruye TODO el loader antes de comenzar
+    // realmente el nivel.
+    loadingScreen.destroy(true);
+  });
+
     this.load.spritesheet(
       "explorer-run",
       "assets/characters/explorer/run.png",
