@@ -16,6 +16,7 @@ import {
 } from "../utils/storage";
 
 import { BaseScene } from "./BaseScene";
+import { preloadMayaAssets } from "../world/maya/MayaAssets";
 
 export class GameScene extends BaseScene {
   constructor() {
@@ -334,47 +335,11 @@ export class GameScene extends BaseScene {
       },
     );
 
-    this.load.image("maya-background", "assets/worlds/maya/background.png");
-
-    this.load.image("arrow", "assets/projectiles/arrow.png");
-
     this.load.image(
-      "maya-platform-left",
-      "assets/worlds/maya/platform-left.png",
+        "arrow",
+        "assets/projectiles/arrow.png"
     );
 
-    this.load.image(
-      "maya-platform-middle",
-      "assets/worlds/maya/platform-middle.png",
-    );
-
-    this.load.image(
-      "maya-platform-right",
-      "assets/worlds/maya/platform-right.png",
-    );
-
-    this.load.spritesheet(
-      "maya-guardian-walk",
-      "assets/enemies/maya/stone-guardian-walk.png",
-      {
-        frameWidth: 65,
-        frameHeight: 100,
-      },
-    );
-
-    this.load.spritesheet(
-      "maya-jade-mask",
-      "assets/worlds/maya/jade-mask.png",
-      {
-        frameWidth: 86,
-        frameHeight: 100,
-      },
-    );
-
-    this.load.image(
-      "maya-spike",
-      "assets/worlds/maya/spike.png"
-    );
 
     this.load.audio(
       "arrow-shot",
@@ -386,11 +351,6 @@ export class GameScene extends BaseScene {
       "assets/sounds/arrow-impact.mp3"
     );
 
-    this.load.audio(
-    "guardian-crumble",
-    "assets/sounds/guardian-crumble.mp3"
-  );
-
   this.load.audio(
   "jump",
   "assets/sounds/jump.wav"
@@ -401,10 +361,10 @@ this.load.audio(
   "assets/sounds/player-hurt.mp3"
 );
 
-this.load.audio(
-  "maya-jungle-ambience",
-  "assets/sounds/maya-jungle-ambience.wav"
-);
+ if (world.key === "maya") {
+    preloadMayaAssets(this);
+  }
+
   }
 
   create() {
