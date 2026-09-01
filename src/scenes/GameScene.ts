@@ -1,23 +1,20 @@
 import Phaser from "phaser";
 
-import {
-  W,
-  H,
-  HUD_TOP,
-  WORLD_W,
-} from "../config/constants";
+import { W, H, HUD_TOP, WORLD_W } from "../config/constants";
 
 import { WORLDS } from "../config/worlds";
 
-import {
-  getNum,
-  setNum,
-  getHero,
-} from "../utils/storage";
+import { getNum, setNum, getHero } from "../utils/storage";
 
 import { BaseScene } from "./BaseScene";
 import { preloadMayaAssets } from "../world/maya/MayaAssets";
 import { createMayaLevel } from "../world/maya/MayaLevel";
+import {
+  createMayaGuardians,
+  updateMayaGuardians,
+  drawMayaGuardianHealth,
+  destroyMayaGuardian,
+} from "../world/maya/MayaEnemies";
 
 export class GameScene extends BaseScene {
   constructor() {
@@ -65,231 +62,163 @@ export class GameScene extends BaseScene {
     this.godMode = false;
   }
   preload() {
-    
-  // ==========================================
-  // PANTALLA DE CARGA
-  // ==========================================
+    // ==========================================
+    // PANTALLA DE CARGA
+    // ==========================================
 
-  this.cameras.main.setBackgroundColor("#0b1710");
+    this.cameras.main.setBackgroundColor("#0b1710");
 
-  const world = WORLDS[this.idx];
+    const world = WORLDS[this.idx];
 
-  // Todo lo perteneciente al loader vive aquí.
-  // Cuando termine la carga destruiremos este container.
-  const loadingScreen = this.add.container(0, 0);
+    // Todo lo perteneciente al loader vive aquí.
+    // Cuando termine la carga destruiremos este container.
+    const loadingScreen = this.add.container(0, 0);
 
+    // ==========================================
+    // BRÚJULA ANIMADA
+    // ==========================================
 
-  // ==========================================
-  // BRÚJULA ANIMADA
-  // ==========================================
+    const compass = this.add.container(W / 2, 210);
 
-  const compass = this.add.container(
-    W / 2,
-    210
-  );
+    // Círculo exterior
+    const compassRing = this.add.circle(0, 0, 20, 0x000000, 0);
 
-  // Círculo exterior
-  const compassRing = this.add.circle(
-    0,
-    0,
-    20,
-    0x000000,
-    0
-  );
+    compassRing.setStrokeStyle(2, 0xd6b85a, 1);
 
-  compassRing.setStrokeStyle(
-    2,
-    0xd6b85a,
-    1
-  );
+    // Pequeño círculo central
+    const compassCenter = this.add.circle(0, 0, 3, 0xd6b85a);
 
-  // Pequeño círculo central
-  const compassCenter = this.add.circle(
-    0,
-    0,
-    3,
-    0xd6b85a
-  );
+    // Aguja
+    const needle = this.add.triangle(
+      0,
+      0,
 
-  // Aguja
-  const needle = this.add.triangle(
-    0,
-    0,
+      0,
+      -15,
+      -5,
+      8,
+      5,
+      8,
 
-    0, -15,
-    -5, 8,
-    5, 8,
+      0xd6b85a,
+    );
 
-    0xd6b85a
-  );
+    compass.add([compassRing, needle, compassCenter]);
 
-  compass.add([
-    compassRing,
-    needle,
-    compassCenter
-  ]);
+    loadingScreen.add(compass);
 
-  loadingScreen.add(compass);
+    // ==========================================
+    // TEXTOS
+    // ==========================================
 
-
-  // ==========================================
-  // TEXTOS
-  // ==========================================
-
-  const title = this.add
-    .text(
-      W / 2,
-      260,
-      "PREPARING EXPEDITION",
-      {
+    const title = this.add
+      .text(W / 2, 260, "PREPARING EXPEDITION", {
         fontFamily: "monospace",
         fontSize: "22px",
         color: "#e7c66e",
         stroke: "#000000",
         strokeThickness: 4,
-      }
-    )
-    .setOrigin(0.5);
+      })
+      .setOrigin(0.5);
 
-  const worldText = this.add
-    .text(
-      W / 2,
-      305,
-      world.name,
-      {
+    const worldText = this.add
+      .text(W / 2, 305, world.name, {
         fontFamily: "monospace",
         fontSize: "15px",
         color: "#ffffff",
-      }
-    )
-    .setOrigin(0.5);
+      })
+      .setOrigin(0.5);
 
+    // ==========================================
+    // BARRA DE PROGRESO
+    // ==========================================
 
-  // ==========================================
-  // BARRA DE PROGRESO
-  // ==========================================
+    const barBackground = this.add.rectangle(W / 2, 370, 300, 16, 0x181818);
 
-  const barBackground = this.add.rectangle(
-    W / 2,
-    370,
-    300,
-    16,
-    0x181818
-  );
+    const progressBar = this.add
+      .rectangle(W / 2 - 148, 370, 0, 10, 0xd6b85a)
+      .setOrigin(0, 0.5);
 
-  const progressBar = this.add
-    .rectangle(
-      W / 2 - 148,
-      370,
-      0,
-      10,
-      0xd6b85a
-    )
-    .setOrigin(0, 0.5);
-
-  const loadingText = this.add
-    .text(
-      W / 2,
-      405,
-      "0%",
-      {
+    const loadingText = this.add
+      .text(W / 2, 405, "0%", {
         fontFamily: "monospace",
         fontSize: "14px",
         color: "#d9d1bc",
-      }
-    )
-    .setOrigin(0.5);
+      })
+      .setOrigin(0.5);
 
+    // Añadimos todo al loader
+    loadingScreen.add([
+      title,
+      worldText,
+      barBackground,
+      progressBar,
+      loadingText,
+    ]);
 
-  // Añadimos todo al loader
-  loadingScreen.add([
-    title,
-    worldText,
-    barBackground,
-    progressBar,
-    loadingText,
-  ]);
+    // ==========================================
+    // ANIMACIÓN DE LA BRÚJULA
+    // ==========================================
 
+    const compassTween = this.tweens.add({
+      targets: needle,
 
-  // ==========================================
-  // ANIMACIÓN DE LA BRÚJULA
-  // ==========================================
+      angle: {
+        from: -35,
+        to: 35,
+      },
 
-  const compassTween = this.tweens.add({
-    targets: needle,
+      duration: 450,
 
-    angle: {
-      from: -35,
-      to: 35
-    },
+      yoyo: true,
+      repeat: -1,
 
-    duration: 450,
+      ease: "Sine.easeInOut",
+    });
 
-    yoyo: true,
-    repeat: -1,
+    // ==========================================
+    // PUNTOS ANIMADOS ...
+    // ==========================================
 
-    ease: "Sine.easeInOut"
-  });
+    let dots = 0;
 
+    const loadingTimer = this.time.addEvent({
+      delay: 350,
+      loop: true,
 
-  // ==========================================
-  // PUNTOS ANIMADOS ...
-  // ==========================================
+      callback: () => {
+        dots = (dots + 1) % 4;
 
-  let dots = 0;
+        title.setText("PREPARING EXPEDITION" + ".".repeat(dots));
+      },
+    });
 
-  const loadingTimer = this.time.addEvent({
-    delay: 350,
-    loop: true,
+    // ==========================================
+    // PROGRESO REAL DE PHASER
+    // ==========================================
 
-    callback: () => {
-      dots = (dots + 1) % 4;
+    this.load.on("progress", (value: number) => {
+      progressBar.width = 296 * value;
 
-      title.setText(
-        "PREPARING EXPEDITION" +
-        ".".repeat(dots)
-      );
-    }
-  });
+      loadingText.setText(`${Math.floor(value * 100)}%`);
+    });
 
+    // ==========================================
+    // CUANDO TERMINA LA CARGA
+    // ==========================================
 
-  // ==========================================
-  // PROGRESO REAL DE PHASER
-  // ==========================================
+    this.load.once("complete", () => {
+      loadingTimer.destroy();
 
-  this.load.on(
-    "progress",
-    (value: number) => {
+      compassTween.stop();
 
-      progressBar.width =
-        296 * value;
+      loadingScreen.destroy(true);
+    });
 
-      loadingText.setText(
-        `${Math.floor(value * 100)}%`
-      );
-    }
-  );
-
-
-  // ==========================================
-  // CUANDO TERMINA LA CARGA
-  // ==========================================
-
-  this.load.once("complete", () => {
-
-    loadingTimer.destroy();
-
-    compassTween.stop();
-
-    loadingScreen.destroy(true);
-  });
-
-
-  // ==========================================
-  // A PARTIR DE AQUÍ:
-  // TUS ASSETS DE SIEMPRE
-  // ==========================================
-
+    // ==========================================
+    // A PARTIR DE AQUÍ:
+    // TUS ASSETS DE SIEMPRE
+    // ==========================================
 
     this.load.spritesheet(
       "explorer-run",
@@ -336,36 +265,19 @@ export class GameScene extends BaseScene {
       },
     );
 
-    this.load.image(
-        "arrow",
-        "assets/projectiles/arrow.png"
-    );
+    this.load.image("arrow", "assets/projectiles/arrow.png");
 
+    this.load.audio("arrow-shot", "assets/sounds/arrow-shot.mp3");
 
-    this.load.audio(
-      "arrow-shot",
-      "assets/sounds/arrow-shot.mp3"
-    );
+    this.load.audio("arrow-impact", "assets/sounds/arrow-impact.mp3");
 
-    this.load.audio(
-      "arrow-impact",
-      "assets/sounds/arrow-impact.mp3"
-    );
+    this.load.audio("jump", "assets/sounds/jump.wav");
 
-  this.load.audio(
-  "jump",
-  "assets/sounds/jump.wav"
-);
+    this.load.audio("player-hurt", "assets/sounds/player-hurt.mp3");
 
-this.load.audio(
-  "player-hurt",
-  "assets/sounds/player-hurt.mp3"
-);
-
- if (world.key === "maya") {
-    preloadMayaAssets(this);
-  }
-
+    if (world.key === "maya") {
+      preloadMayaAssets(this);
+    }
   }
 
   create() {
@@ -373,21 +285,17 @@ this.load.audio(
     const world = WORLDS[this.idx];
 
     // Aplicar la preferencia de sonido guardada
-this.sound.mute =
-  localStorage.getItem("music") === "off";
+    this.sound.mute = localStorage.getItem("music") === "off";
 
-  // Ambiente propio del mundo Maya
-  if (world.key === "maya") {
-    this.ambient = this.sound.add(
-      "maya-jungle-ambience",
-      {
+    // Ambiente propio del mundo Maya
+    if (world.key === "maya") {
+      this.ambient = this.sound.add("maya-jungle-ambience", {
         loop: true,
-        volume: 0.20
-      }
-    );
+        volume: 0.2,
+      });
 
-    this.ambient.play();
-  }
+      this.ambient.play();
+    }
 
     if (!this.anims.exists("explorer-run")) {
       this.anims.create({
@@ -473,38 +381,37 @@ this.sound.mute =
       });
     }
 
-
-
     this.cameras.main.setBackgroundColor(world.bg);
     this.physics.world.setBounds(0, 0, WORLD_W, HUD_TOP);
     this.makeTextures(world);
     // Placeholder background layers. Replace these rectangles with tileSprites/images in public/assets/worlds/<world>/.
 
     this.platforms = this.physics.add.staticGroup();
- 
+
     this.player = this.physics.add.sprite(90, 530, "explorer-idle", 0);
     this.player.setScale(0.55);
     this.player.setCollideWorldBounds(true).setBounce(0.02);
 
     if (world.key === "maya") {
-  createMayaLevel({
-    scene: this,
-    platforms: this.platforms,
-    player: this.player,
+      createMayaLevel({
+        scene: this,
+        platforms: this.platforms,
+        player: this.player,
 
-    onDamage: () =>
-      this.damage(),
+        onDamage: () => this.damage(),
 
-    onWin: () =>
-      this.win(),
-  });
-}
+        onWin: () => this.win(),
+      });
+    }
 
     this.physics.add.collider(this.player, this.platforms);
-    this.enemies = this.physics.add.group({ allowGravity: true });
-    [520, 1040, 1510, 2170, 2730, 3190].forEach((x, i) =>
-      this.spawnEnemy(x, 530, i % 2 ? 1 : -1),
-    );
+    this.enemies = this.physics.add.group({
+      allowGravity: true,
+    });
+
+    if (world.key === "maya") {
+      createMayaGuardians(this, this.enemies);
+    }
     this.physics.add.collider(this.enemies, this.platforms);
     this.physics.add.overlap(
       this.player,
@@ -519,31 +426,24 @@ this.sound.mute =
       this.shots,
       this.enemies,
       (s, enemyObject) => {
+        const arrow = s as Phaser.Physics.Arcade.Sprite;
 
-         const arrow =
-      s as Phaser.Physics.Arcade.Sprite;
+        const enemy = enemyObject as Phaser.Physics.Arcade.Sprite;
 
-    const enemy =
-      enemyObject as Phaser.Physics.Arcade.Sprite;
+        // Guardamos el punto exacto del impacto
+        const impactX = arrow.x;
+        const impactY = arrow.y;
 
-    // Guardamos el punto exacto del impacto
-    const impactX = arrow.x;
-    const impactY = arrow.y;
+        // Efecto piedra/chispazo
+        this.arrowImpactEffect(impactX, impactY);
 
-    // Efecto piedra/chispazo
-    this.arrowImpactEffect(
-      impactX,
-      impactY
-    );
+        // Impacto sonoro contra piedra
+        this.sound.play("arrow-impact", {
+          volume: 0.5,
+        });
 
-    // Impacto sonoro contra piedra
-    this.sound.play("arrow-impact", {
-      volume: 0.5
-    });
-
-
-    // La flecha desaparece
-    arrow.destroy();
+        // La flecha desaparece
+        arrow.destroy();
         // Quitar 1 HP
         const hp = enemy.getData("hp") ?? 4;
         const newHp = hp - 1;
@@ -559,10 +459,10 @@ this.sound.mute =
           }
         });
 
-        this.drawEnemyHealth(enemy);
+        drawMayaGuardianHealth(enemy);
 
         if (newHp <= 0) {
-          this.destroyGuardian(enemy);
+          destroyMayaGuardian(this, enemy);
         }
       },
       undefined,
@@ -592,26 +492,19 @@ this.sound.mute =
     });
 
     this.game.events.on(Phaser.Core.Events.BLUR, this.resetControls, this);
-    this.events.once(
-      Phaser.Scenes.Events.SHUTDOWN,
-      () => {
-        this.game.events.off(
-          Phaser.Core.Events.BLUR,
-          this.resetControls,
-          this
-        );
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.game.events.off(Phaser.Core.Events.BLUR, this.resetControls, this);
 
-        this.resetControls();
+      this.resetControls();
 
-        // Detener el ambiente al abandonar
-        // la expedición
-        if (this.ambient) {
-          this.ambient.stop();
-          this.ambient.destroy();
-          this.ambient = undefined;
-        }
+      // Detener el ambiente al abandonar
+      // la expedición
+      if (this.ambient) {
+        this.ambient.stop();
+        this.ambient.destroy();
+        this.ambient = undefined;
       }
-    );
+    });
     this.cameras.main.setBounds(0, 0, WORLD_W, H);
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1, 0, 45);
     this.cameras.main.setDeadzone(90, 120);
@@ -636,208 +529,53 @@ this.sound.mute =
     g.clear();
     g.destroy();
   }
-  spawnEnemy(x: number, y: number, dir: number) {
-    const e = this.enemies.create(
-      x,
-      y,
-      "maya-guardian-walk",
-      0,
-    ) as Phaser.Physics.Arcade.Sprite;
+ 
 
-    // Ajustaremos esto visualmente después si hace falta
-    e.setScale(0.55);
-    e.setSize(38, 82);
-    e.setOffset(13, 16);
-
-    e.setVelocityX(70 * dir);
-    e.setBounce(0);
-    e.setCollideWorldBounds(false);
-
-    e.setData("dir", dir);
-    e.setData("originX", x);
-    e.setData("hp", 4);
-    e.setData("maxHp", 4);
-
-    const healthBar = this.add.graphics();
-    e.setData("healthBar", healthBar);
-
-    this.drawEnemyHealth(e);
-    
-    // Empieza caminando
-    e.play("maya-guardian-walk");
-
-    // Nuestro PNG mira hacia la derecha.
-    e.setFlipX(dir < 0);
-
-  }
-
-drawEnemyHealth(enemy: Phaser.Physics.Arcade.Sprite) {
-  const bar = enemy.getData("healthBar") as Phaser.GameObjects.Graphics;
-
-  if (!bar) return;
-
-  const hp = enemy.getData("hp") ?? 4;
-  const maxHp = enemy.getData("maxHp") ?? 4;
-
-  const width = 34;
-  const height = 5;
-
-  const percentage = hp / maxHp;
-
-  bar.clear();
-
-  // Fondo
-  bar.fillStyle(0x111111, 0.9);
-  bar.fillRect(
-    enemy.x - width / 2,
-    enemy.y - 40,
-    width,
-    height
-  );
-
-  let color = 0x44cc44;
-
-  if (percentage <= 0.25) {
-    color = 0xff3333; // rojo
-  } else if (percentage <= 0.5) {
-    color = 0xffcc33; // amarillo
-  }
-
-  bar.fillStyle(color, 1);
-
-  bar.fillRect(
-    enemy.x - width / 2,
-    enemy.y - 40,
-    width * percentage,
-    height
-  );
-}
-
-arrowImpactEffect(x: number, y: number) {
-  // Destello central
-  const flash = this.add
-    .circle(x, y, 8, 0xffe08a, 1)
-    .setDepth(50);
-
-  this.tweens.add({
-    targets: flash,
-    scale: 2,
-    alpha: 0,
-    duration: 120,
-    onComplete: () => flash.destroy(),
-  });
-
-  // Pequeños fragmentos de piedra
-  for (let i = 0; i < 6; i++) {
-    const fragment = this.add
-      .rectangle(
-        x,
-        y,
-        Phaser.Math.Between(2, 4),
-        Phaser.Math.Between(2, 4),
-        0xb9a37a
-      )
-      .setDepth(49);
-
-    const angle = Phaser.Math.FloatBetween(
-      0,
-      Math.PI * 2
-    );
-
-    const distance = Phaser.Math.Between(12, 25);
+  arrowImpactEffect(x: number, y: number) {
+    // Destello central
+    const flash = this.add.circle(x, y, 8, 0xffe08a, 1).setDepth(50);
 
     this.tweens.add({
-      targets: fragment,
-
-      x:
-        x +
-        Math.cos(angle) *
-          distance,
-
-      y:
-        y +
-        Math.sin(angle) *
-          distance,
-
+      targets: flash,
+      scale: 2,
       alpha: 0,
-
-      duration: Phaser.Math.Between(
-        150,
-        250
-      ),
-
-      onComplete: () =>
-        fragment.destroy(),
+      duration: 120,
+      onComplete: () => flash.destroy(),
     });
+
+    // Pequeños fragmentos de piedra
+    for (let i = 0; i < 6; i++) {
+      const fragment = this.add
+        .rectangle(
+          x,
+          y,
+          Phaser.Math.Between(2, 4),
+          Phaser.Math.Between(2, 4),
+          0xb9a37a,
+        )
+        .setDepth(49);
+
+      const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+
+      const distance = Phaser.Math.Between(12, 25);
+
+      this.tweens.add({
+        targets: fragment,
+
+        x: x + Math.cos(angle) * distance,
+
+        y: y + Math.sin(angle) * distance,
+
+        alpha: 0,
+
+        duration: Phaser.Math.Between(150, 250),
+
+        onComplete: () => fragment.destroy(),
+      });
+    }
   }
-}
 
-destroyGuardian(enemy: Phaser.Physics.Arcade.Sprite) {
-  const x = enemy.x;
-  const y = enemy.y;
 
-   // Sonido de piedra desmoronándose
-  this.sound.play("guardian-crumble", {
-    volume: 0.65
-  });
-
-  // Eliminar la barra de vida
-  const bar =
-    enemy.getData("healthBar") as Phaser.GameObjects.Graphics;
-
-  if (bar) {
-    bar.destroy();
-  }
-
-  // Evitar más colisiones inmediatamente
-  enemy.disableBody(true, true);
-
-  // Crear fragmentos de piedra
-  for (let i = 0; i < 10; i++) {
-    const size = Phaser.Math.Between(4, 9);
-
-    const fragment = this.add
-      .rectangle(
-        x + Phaser.Math.Between(-15, 15),
-        y + Phaser.Math.Between(-25, 20),
-        size,
-        size,
-        Phaser.Math.RND.pick([
-          0x82745e,
-          0xa08f70,
-          0x665d4e,
-          0x4f6654,
-        ])
-      )
-      .setDepth(20);
-
-    // Cada piedra sale en una dirección diferente
-    const targetX =
-      fragment.x + Phaser.Math.Between(-45, 45);
-
-    const targetY =
-      fragment.y + Phaser.Math.Between(25, 65);
-
-    this.tweens.add({
-      targets: fragment,
-
-      x: targetX,
-      y: targetY,
-
-      angle: Phaser.Math.Between(-180, 180),
-
-      alpha: 0,
-
-      duration: Phaser.Math.Between(350, 600),
-
-      ease: "Quad.easeIn",
-
-      onComplete: () => {
-        fragment.destroy();
-      },
-    });
-  }
-}
 
   createHUD(world: (typeof WORLDS)[number]) {
     const hud = this.add
@@ -1000,22 +738,19 @@ destroyGuardian(enemy: Phaser.Physics.Arcade.Sprite) {
     if (this.player?.active) this.player.setVelocityX(0);
   }
 
-jump() {
-  if (
-    this.paused ||
-    !this.player.body?.blocked.down
-  ) {
-    return;
+  jump() {
+    if (this.paused || !this.player.body?.blocked.down) {
+      return;
+    }
+
+    // El sonido se solicita inmediatamente
+    this.sound.play("jump", {
+      volume: 0.6,
+    });
+
+    // El salto ocurre en el mismo evento
+    this.player.setVelocityY(-600);
   }
-
-  // El sonido se solicita inmediatamente
-  this.sound.play("jump", {
-    volume: 0.6
-  });
-
-  // El salto ocurre en el mismo evento
-  this.player.setVelocityY(-600);
-}
 
   fire() {
     if (
@@ -1036,9 +771,9 @@ jump() {
     this.time.delayedCall(320, () => {
       if (this.paused || this.won || !this.player?.active) return;
 
-       // Sonido de liberación del arco
+      // Sonido de liberación del arco
       this.sound.play("arrow-shot", {
-        volume: 0.45
+        volume: 0.45,
       });
 
       const arrow = this.shots.create(
@@ -1067,39 +802,36 @@ jump() {
     );
   }
 
- damage() {
-  if (this.godMode) return;
+  damage() {
+    if (this.godMode) return;
 
-  if (this.invulnerable || this.won) return;
+    if (this.invulnerable || this.won) return;
 
-  // Sonido al recibir daño
-  this.sound.play("player-hurt", {
-    volume: 0.55
-  });
+    // Sonido al recibir daño
+    this.sound.play("player-hurt", {
+      volume: 0.55,
+    });
 
-  this.lives--;
-  this.updateLives();
+    this.lives--;
+    this.updateLives();
 
-  if (this.lives <= 0) {
-    this.gameOver();
-    return;
-  }
-
-  this.invulnerable = true;
-
-  this.player.setTint(0xff7777);
-  this.player.setVelocity(
-    -this.facing * 180,
-    -260
-  );
-
-  this.time.delayedCall(1200, () => {
-    if (this.player?.active) {
-      this.invulnerable = false;
-      this.player.clearTint();
+    if (this.lives <= 0) {
+      this.gameOver();
+      return;
     }
-  });
-}
+
+    this.invulnerable = true;
+
+    this.player.setTint(0xff7777);
+    this.player.setVelocity(-this.facing * 180, -260);
+
+    this.time.delayedCall(1200, () => {
+      if (this.player?.active) {
+        this.invulnerable = false;
+        this.player.clearTint();
+      }
+    });
+  }
 
   updateLives() {
     this.hudLives.setText(
@@ -1145,80 +877,56 @@ jump() {
       }
     }
 
-    this.enemies?.children.iterate((o: any) => {
+   const world =
+  WORLDS[this.idx];
+
+if (world.key === "maya") {
+  updateMayaGuardians(
+    this.enemies
+  );
+}
+
+    this.shots?.children.iterate((o: any) => {
       if (!o?.active) return true;
-      const ox = o.getData("originX");
-      if (Math.abs(o.x - ox) > 115) {
-        const d = o.x > ox ? -1 : 1;
 
-        o.setVelocityX(70 * d);
-        o.setData("dir", d);
+      const startX = o.getData("startX");
+      const distance = Math.abs(o.x - startX);
+      const direction = o.getData("direction");
 
-        // Girar visualmente al guardián
-        o.setFlipX(d < 0);
+      // Primer tramo: vuelo recto
+      if (distance < 120) {
+        o.setVelocityY(0);
       }
 
-      this.drawEnemyHealth(o);
+      // A partir de 120 px empieza a caer
+      else {
+        const fallDistance = distance - 120;
+
+        // Cuanto más lejos llega, más rápido cae
+        const fallSpeed = Math.min(80 + fallDistance * 2.5, 600);
+
+        o.setVelocityY(fallSpeed);
+
+        // Pierde progresivamente velocidad horizontal
+        const horizontalSpeed = Math.max(100, 430 - fallDistance * 1.2);
+
+        o.setVelocityX(direction * horizontalSpeed);
+
+        // La punta de la flecha sigue la trayectoria
+        const angle = Phaser.Math.RadToDeg(
+          Math.atan2(fallSpeed, horizontalSpeed),
+        );
+
+        o.setAngle(direction < 0 ? -angle : angle);
+      }
+
+      // Destruirla si lleva demasiado tiempo volando
+      if (this.time.now - o.getData("born") > 2500) {
+        o.destroy();
+      }
 
       return true;
     });
-
-    this.shots?.children.iterate((o: any) => {
-  if (!o?.active) return true;
-
-  const startX = o.getData("startX");
-  const distance = Math.abs(o.x - startX);
-  const direction = o.getData("direction");
-
-  // Primer tramo: vuelo recto
-  if (distance < 120) {
-    o.setVelocityY(0);
-  }
-
-  // A partir de 120 px empieza a caer
-  else {
-    const fallDistance = distance - 120;
-
-    // Cuanto más lejos llega, más rápido cae
-    const fallSpeed = Math.min(
-      80 + fallDistance * 2.5,
-      600
-    );
-
-    o.setVelocityY(fallSpeed);
-
-    // Pierde progresivamente velocidad horizontal
-    const horizontalSpeed = Math.max(
-      100,
-      430 - fallDistance * 1.2
-    );
-
-    o.setVelocityX(
-      direction * horizontalSpeed
-    );
-
-    // La punta de la flecha sigue la trayectoria
-    const angle = Phaser.Math.RadToDeg(
-      Math.atan2(
-        fallSpeed,
-        horizontalSpeed
-      )
-    );
-
-    o.setAngle(
-      direction < 0
-        ? -angle
-        : angle
-    );
-  }
-
-  // Destruirla si lleva demasiado tiempo volando
-  if (this.time.now - o.getData("born") > 2500) {
-    o.destroy();
-  }
-
-  return true;
-});
 
     if (this.player.y > HUD_TOP - 15) {
       if (this.godMode) {
