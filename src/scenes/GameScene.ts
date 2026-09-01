@@ -6,19 +6,23 @@ import { WORLDS } from "../config/worlds";
 
 import { getNum, setNum, getHero } from "../utils/storage";
 
+
 import {
-  preloadPlayerAssets,
-  createPlayerAnimations,
-} from "../Systems/PlayerAssets";
+    preloadPlayerAssets,
+    createPlayerAnimations,
+} from "../systems/PlayerAssets";
+import {
+  PlayerController
+} from "../systems/PlayerController";
 
 import { BaseScene } from "./BaseScene";
 import { preloadMayaAssets } from "../world/maya/MayaAssets";
 import { createMayaLevel } from "../world/maya/MayaLevel";
 import {
-  createMayaGuardians,
-  updateMayaGuardians,
-  drawMayaGuardianHealth,
-  destroyMayaGuardian,
+    createMayaGuardians,
+    updateMayaGuardians,
+    drawMayaGuardianHealth,
+    destroyMayaGuardian,
 } from "../world/maya/MayaEnemies";
 
 export class GameScene extends BaseScene {
@@ -44,6 +48,7 @@ export class GameScene extends BaseScene {
   soundLabel!: Phaser.GameObjects.Text;
   godLabel!: Phaser.GameObjects.Text;
   ambient?: Phaser.Sound.BaseSound;
+  playerController!: PlayerController;
 
   isShooting = false;
   godMode = false;
@@ -293,6 +298,15 @@ createPlayerAnimations(this);
     this.player = this.physics.add.sprite(90, 530, "explorer-idle", 0);
     this.player.setScale(0.55);
     this.player.setCollideWorldBounds(true).setBounce(0.02);
+
+    this.playerController =
+  new PlayerController(
+    this.player
+  );
+
+this.playerController.setFacing(
+  this.facing
+);
 
     if (world.key === "maya") {
       createMayaLevel({
@@ -633,26 +647,35 @@ createPlayerAnimations(this);
       up();
     });
   }
-  resetControls() {
-    this.left = false;
-    this.right = false;
-    this.firing = false;
-    if (this.player?.active) this.player.setVelocityX(0);
+resetControls() {
+  this.left = false;
+  this.right = false;
+  this.firing = false;
+
+  if (this.playerController) {
+    this.playerController.stop();
+  }
+}
+
+jump() {
+  if (this.paused) {
+    return;
   }
 
-  jump() {
-    if (this.paused || !this.player.body?.blocked.down) {
-      return;
-    }
+  const jumped =
+    this.playerController.jump();
 
-    // El sonido se solicita inmediatamente
-    this.sound.play("jump", {
+  if (!jumped) {
+    return;
+  }
+
+  this.sound.play(
+    "jump",
+    {
       volume: 0.6,
-    });
-
-    // El salto ocurre en el mismo evento
-    this.player.setVelocityY(-600);
-  }
+    }
+  );
+}
 
   fire() {
     if (
@@ -743,41 +766,36 @@ createPlayerAnimations(this);
     );
   }
   update() {
-    if (this.paused || this.won || !this.player?.active) return;
-    let vx = 0;
-    const keyA = this.input.keyboard!.addKey("A");
-    const keyD = this.input.keyboard!.addKey("D");
-    const moveLeft = this.left || this.cursors.left.isDown || keyA.isDown;
-    const moveRight = this.right || this.cursors.right.isDown || keyD.isDown;
+    const keyA =
+  this.input.keyboard!.addKey("A");
 
-    if (moveLeft !== moveRight) {
-      if (moveLeft) {
-        vx = -250;
-        this.facing = -1;
-      } else {
-        vx = 250;
-        this.facing = 1;
-      }
-    }
-    this.player.setVelocityX(vx);
-    if (vx < 0) this.player.setFlipX(true);
-    if (vx > 0) this.player.setFlipX(false);
+const keyD =
+  this.input.keyboard!.addKey("D");
 
-    const onGround = this.player.body?.blocked.down;
-    const velocityY = this.player.body?.velocity.y ?? 0;
-    if (!this.isShooting) {
-      if (!onGround && velocityY < 0) {
-        if (this.player.anims.currentAnim?.key !== "explorer-jump")
-          this.player.play("explorer-jump");
-      } else if (!onGround && velocityY >= 0) {
-        if (this.player.anims.currentAnim?.key !== "explorer-fall")
-          this.player.play("explorer-fall");
-      } else if (vx !== 0) {
-        this.player.play("explorer-run", true);
-      } else {
-        this.player.play("explorer-idle", true);
-      }
-    }
+const moveLeft =
+  this.left ||
+  this.cursors.left.isDown ||
+  keyA.isDown;
+
+const moveRight =
+  this.right ||
+  this.cursors.right.isDown ||
+  keyD.isDown;
+
+const vx =
+  this.playerController.move(
+    moveLeft,
+    moveRight
+  );
+
+this.facing =
+  this.playerController.getFacing();
+
+  this.playerController
+  .updateAnimation(
+    vx,
+    this.isShooting
+  );
 
    const world =
   WORLDS[this.idx];
