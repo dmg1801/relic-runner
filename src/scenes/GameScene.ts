@@ -17,6 +17,7 @@ import {
 
 import { BaseScene } from "./BaseScene";
 import { preloadMayaAssets } from "../world/maya/MayaAssets";
+import { createMayaLevel } from "../world/maya/MayaLevel";
 
 export class GameScene extends BaseScene {
   constructor() {
@@ -479,88 +480,26 @@ this.sound.mute =
     this.makeTextures(world);
     // Placeholder background layers. Replace these rectangles with tileSprites/images in public/assets/worlds/<world>/.
 
-    if (world.key === "maya") {
-      const bg = this.add.image(0, 0, "maya-background");
-
-      // La imagen empieza exactamente desde su esquina superior izquierda
-      bg.setOrigin(0, 0);
-
-      // Mantener proporciones y cubrir toda la altura jugable
-      const scale = HUD_TOP / bg.height;
-      bg.setScale(scale);
-
-      // Parallax horizontal suave.
-      // Verticalmente permanece fija.
-      bg.setScrollFactor(0.12, 0);
-
-      bg.setDepth(-10);
-    }
-
     this.platforms = this.physics.add.staticGroup();
-    const plat = (x: number, y: number, w: number) => {
-      // =========================
-      // COLLIDER INVISIBLE
-      // =========================
-
-      const collider = this.add.rectangle(x, y, w, 24, 0x000000, 0);
-
-      this.physics.add.existing(collider, true);
-      this.platforms.add(collider);
-
-      // =========================
-      // ARTE MAYA
-      // =========================
-
-      if (world.key === "maya") {
-        const platformHeight = 55;
-        const capWidth = 40;
-
-        // IMPORTANTE:
-        // superficie superior real del collider
-        const visualY = y - 12;
-
-        const middle = this.add.tileSprite(
-          x,
-          visualY,
-          Math.max(1, w - capWidth * 2),
-          platformHeight,
-          "maya-platform-middle",
-        );
-
-        middle.setOrigin(0.5, 0).setDepth(2);
-
-        const left = this.add.image(x - w / 2, visualY, "maya-platform-left");
-
-        left
-          .setOrigin(0, 0)
-          .setDisplaySize(capWidth, platformHeight)
-          .setDepth(3);
-
-        const right = this.add.image(x + w / 2, visualY, "maya-platform-right");
-
-        right
-          .setOrigin(1, 0)
-          .setDisplaySize(capWidth, platformHeight)
-          .setDepth(3);
-      }
-    };
-    // Long horizontal level + gaps + elevated routes.
-    plat(350, 590, 700);
-    plat(930, 590, 360);
-    plat(1450, 590, 520);
-    plat(2050, 590, 440);
-    plat(2600, 590, 500);
-    plat(3250, 590, 700);
-    plat(650, 490, 180);
-    plat(1120, 455, 170);
-    plat(1650, 480, 190);
-    plat(2300, 450, 180);
-    plat(2860, 475, 200);
-    plat(3340, 420, 180);
+ 
     this.player = this.physics.add.sprite(90, 530, "explorer-idle", 0);
-
     this.player.setScale(0.55);
     this.player.setCollideWorldBounds(true).setBounce(0.02);
+
+    if (world.key === "maya") {
+  createMayaLevel({
+    scene: this,
+    platforms: this.platforms,
+    player: this.player,
+
+    onDamage: () =>
+      this.damage(),
+
+    onWin: () =>
+      this.win(),
+  });
+}
+
     this.physics.add.collider(this.player, this.platforms);
     this.enemies = this.physics.add.group({ allowGravity: true });
     [520, 1040, 1510, 2170, 2730, 3190].forEach((x, i) =>
@@ -631,51 +570,6 @@ this.sound.mute =
     );
     // spikes / traps
     // Maya spikes / traps
-[820, 1320, 1900, 2480, 3030].forEach((x) => {
-
-  const spike = this.physics.add.staticSprite(
-    x,
-    560,
-    "maya-spike"
-  );
-
-  // Ajusta esto según el tamaño final de tu PNG
-  spike.setScale(0.45);
-
-  // Hitbox más pequeña que la imagen
-  // para que solo hagan daño las puntas
-  spike.setSize(
-    spike.width * 0.45,
-    spike.height * 0.65
-  );
-
-  spike.setOffset(
-    spike.width * 0.175,
-    spike.height * 0.10
-  );
-
-  this.physics.add.overlap(
-    this.player,
-    spike,
-    () => this.damage(),
-    undefined,
-    this,
-  );
-});
-    const relic = this.physics.add.staticSprite(3480, 365, "maya-jade-mask", 0);
-
-    relic.setScale(0.40);
-    relic.setSize(35, 50);
-    relic.setOffset(20, 20);
-
-    relic.play("maya-jade-mask-glow");
-    this.physics.add.overlap(
-      this.player,
-      relic,
-      () => this.win(),
-      undefined,
-      this,
-    );
 
     this.input.keyboard!.removeAllListeners();
 
