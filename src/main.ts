@@ -1,157 +1,29 @@
 import Phaser from "phaser";
 
-type WorldKey = "maya" | "rome" | "egypt" | "china";
-type HeroKey = "explorer" | "adventurer";
-const W = 432,
-  H = 768,
-  HUD_TOP = 620,
-  WORLD_W = 3600;
-const WORLDS: {
-  key: WorldKey;
-  name: string;
-  relic: string;
-  bg: number;
-  accent: number;
-  ground: number;
-}[] = [
-  {
-    key: "maya",
-    name: "MAYA",
-    relic: "Jade Mask",
-    bg: 0x183d2b,
-    accent: 0xd6b85a,
-    ground: 0x30291d,
-  },
-  {
-    key: "rome",
-    name: "ROME",
-    relic: "Imperial Coin",
-    bg: 0x51362d,
-    accent: 0xd8c5a0,
-    ground: 0x45382f,
-  },
-  {
-    key: "egypt",
-    name: "EGYPT",
-    relic: "Scarab Amulet",
-    bg: 0x8c612d,
-    accent: 0x45b8b0,
-    ground: 0x5c4025,
-  },
-  {
-    key: "china",
-    name: "CHINA",
-    relic: "Ritual Jade Bi",
-    bg: 0x542126,
-    accent: 0xe0b84b,
-    ground: 0x3a2522,
-  },
-];
-const getNum = (k: string, d = 0) => Number(localStorage.getItem(k) ?? d);
-const setNum = (k: string, v: number) => localStorage.setItem(k, String(v));
-const getHero = () => (localStorage.getItem("hero") as HeroKey) || "explorer";
+import {
+  W,
+  H,
+  HUD_TOP,
+  WORLD_W,
+} from "./config/constants";
 
-class Base extends Phaser.Scene {
-  txt(x: number, y: number, s: string, size = 24, color = "#fff") {
-    return this.add
-      .text(x, y, s, {
-        fontFamily: "monospace",
-        fontSize: `${size}px`,
-        color,
-        stroke: "#000",
-        strokeThickness: 4,
-      })
-      .setOrigin(0.5);
-  }
-  button(x: number, y: number, label: string, cb: () => void, w = 280) {
-    const r = this.add
-      .rectangle(x, y, w, 54, 0x241d16)
-      .setStrokeStyle(3, 0xd2ad63)
-      .setInteractive({ useHandCursor: true });
-    const t = this.txt(x, y, label, 20);
-    r.on("pointerdown", cb);
-    return [r, t];
-  }
-}
-class Menu extends Base {
-  constructor() {
-    super("Menu");
-  }
-  create() {
-    this.cameras.main.setBackgroundColor("#10100c");
-    this.txt(W / 2, 105, "RELIC RUNNER", 38, "#e7c66e");
-    this.txt(W / 2, 150, "ARCHAEOLOGICAL ADVENTURE", 13, "#d9d1bc");
-    this.button(W / 2, 255, "START EXPEDITION", () =>
-      this.scene.start("Select"),
-    );
-    this.button(W / 2, 325, "MUSEUM", () => this.scene.start("Museum"));
-    this.button(W / 2, 395, "SETTINGS", () => this.scene.start("Settings"));
-    this.txt(W / 2, 690, "V0.2 • HORIZONTAL PROTOTYPE", 12, "#8d887d");
-  }
-}
-class Select extends Base {
-  constructor() {
-    super("Select");
-  }
-  create() {
-    this.cameras.main.setBackgroundColor("#17130f");
-    this.txt(W / 2, 80, "CHOOSE EXPLORER", 27, "#e7c66e");
-    const make = (x: number, key: HeroKey, label: string, col: number) => {
-      const box = this.add
-        .rectangle(x, 270, 160, 250, 0x24211c)
-        .setStrokeStyle(3, col)
-        .setInteractive();
-      this.add.rectangle(x, 245, 60, 105, col);
-      this.add.circle(x, 180, 30, col);
-      this.txt(x, 355, label, 17);
-      this.txt(
-        x,
-        390,
-        key === "explorer" ? "SUNBOLT" : "MOON BOW",
-        11,
-        "#e7c66e",
-      );
-      box.on("pointerdown", () => {
-        localStorage.setItem("hero", key);
-        this.scene.start("Worlds");
-      });
-    };
-    make(115, "explorer", "EXPLORER", 0x3d87c7);
-    make(317, "adventurer", "ADVENTURER", 0xb94e62);
-    this.button(W / 2, 660, "← BACK", () => this.scene.start("Menu"), 180);
-  }
-}
-class Worlds extends Base {
-  constructor() {
-    super("Worlds");
-  }
-  create() {
-    this.cameras.main.setBackgroundColor("#11100d");
-    this.txt(W / 2, 65, "EXPEDITION MAP", 28, "#e7c66e");
-    const unlocked = Math.max(1, getNum("unlocked", 1));
-    WORLDS.forEach((w, i) => {
-      const y = 155 + i * 115,
-        ok = i < unlocked;
-      const r = this.add
-        .rectangle(W / 2, y, 330, 82, ok ? w.bg : 0x222222)
-        .setStrokeStyle(3, ok ? w.accent : 0x555555);
-      this.txt(W / 2, y - 10, `${i + 1}. ${w.name}`, 21, ok ? "#fff" : "#777");
-      this.txt(
-        W / 2,
-        y + 20,
-        ok ? "EXPLORE" : "LOCKED",
-        11,
-        ok ? "#e7c66e" : "#666",
-      );
-      if (ok)
-        r.setInteractive().on("pointerdown", () =>
-          this.scene.start("Game", { idx: i }),
-        );
-    });
-    this.button(W / 2, 690, "← MENU", () => this.scene.start("Menu"), 180);
-  }
-}
-class Game extends Base {
+import { WORLDS } from "./config/worlds";
+
+import {
+  getNum,
+  setNum,
+  getHero,
+} from "./utils/storage";
+
+import { BaseScene } from "./scenes/BaseScene";
+import { MenuScene } from "./scenes/MenuScene";
+import { SelectScene } from "./scenes/SelectScene";
+import { WorldsScene } from "./scenes/WorldScene";
+import { MuseumScene } from "./scenes/MuseumScene";
+import { SettingsScene } from "./scenes/SettingsScene";
+
+
+class Game extends BaseScene {
   constructor() {
     super("Game");
   }
@@ -1629,74 +1501,7 @@ jump() {
     );
   }
 }
-class Museum extends Base {
-  constructor() {
-    super("Museum");
-  }
-  create() {
-    this.cameras.main.setBackgroundColor("#16120e");
-    this.txt(W / 2, 65, "THE MUSEUM", 31, "#e7c66e");
-    this.txt(W / 2, 100, "Recovered antiquities", 13, "#aaa");
-    WORLDS.forEach((w, i) => {
-      const y = 175 + i * 105,
-        got = localStorage.getItem(`relic_${w.key}`) === "1";
-      this.add
-        .rectangle(W / 2, y, 340, 78, got ? 0x2b241c : 0x1c1b19)
-        .setStrokeStyle(2, got ? w.accent : 0x444);
-      this.txt(85, y, got ? "◆" : "?", 28, got ? "#e7c66e" : "#555");
-      this.add.text(125, y - 22, got ? w.relic : "Unknown relic", {
-        fontFamily: "monospace",
-        fontSize: "17px",
-        color: got ? "#fff" : "#666",
-      });
-      this.add.text(
-        125,
-        y + 7,
-        got ? `Recovered in ${w.name}` : "Complete expedition to discover",
-        { fontFamily: "monospace", fontSize: "11px", color: "#999" },
-      );
-    });
-    this.button(W / 2, 680, "← MENU", () => this.scene.start("Menu"), 180);
-  }
-}
-class Settings extends Base {
-  constructor() {
-    super("Settings");
-  }
-  create() {
-    this.cameras.main.setBackgroundColor("#12110e");
-    this.txt(W / 2, 100, "SETTINGS", 30, "#e7c66e");
-    let music = localStorage.getItem("music") !== "off";
-    const label = this.txt(W / 2, 260, `MUSIC: ${music ? "ON" : "OFF"}`, 21);
-    this.add
-      .rectangle(W / 2, 260, 290, 65, 0, 0)
-      .setInteractive()
-      .on("pointerdown", () => {
-        music = !music;
-        localStorage.setItem("music", music ? "on" : "off");
-        label.setText(`MUSIC: ${music ? "ON" : "OFF"}`);
-      });
-    this.txt(W / 2, 340, "PC: ← → / A D • SPACE • F", 13, "#aaa");
-    this.txt(W / 2, 370, "Mobile: ◀ ▶ • ✦ attack • ▲ jump", 13, "#aaa");
-    this.button(
-      W / 2,
-      600,
-      "RESET PROGRESS",
-      () => {
-        [
-          "unlocked",
-          "relic_maya",
-          "relic_rome",
-          "relic_egypt",
-          "relic_china",
-        ].forEach((k) => localStorage.removeItem(k));
-        this.scene.restart();
-      },
-      260,
-    );
-    this.button(W / 2, 680, "← MENU", () => this.scene.start("Menu"), 180);
-  }
-}
+
 
 new Phaser.Game({
   type: Phaser.AUTO,
@@ -1727,5 +1532,13 @@ new Phaser.Game({
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
 
-  scene: [Menu, Select, Worlds, Game, Museum, Settings],
+ scene: [
+  MenuScene,
+  SelectScene,
+  WorldsScene,
+  Game,
+  MuseumScene,
+  SettingsScene,
+],
+  
 });
