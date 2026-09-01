@@ -14,6 +14,12 @@ import {
 import {
   PlayerController
 } from "../systems/PlayerController";
+import {
+  preloadCombatAssets,
+  createArrow,
+  updateArrows,
+  createArrowImpactEffect,
+} from "../systems/CombatSystem";
 
 import { BaseScene } from "./BaseScene";
 import { preloadMayaAssets } from "../world/maya/MayaAssets";
@@ -226,13 +232,8 @@ export class GameScene extends BaseScene {
     });
 
     preloadPlayerAssets(this);
-
-    this.load.image("arrow", "assets/projectiles/arrow.png");
-
-    this.load.audio("arrow-shot", "assets/sounds/arrow-shot.mp3");
-
-    this.load.audio("arrow-impact", "assets/sounds/arrow-impact.mp3");
-
+    preloadCombatAssets(this);
+    
     if (world.key === "maya") {
       preloadMayaAssets(this);
     }
@@ -351,7 +352,11 @@ this.playerController.setFacing(
         const impactY = arrow.y;
 
         // Efecto piedra/chispazo
-        this.arrowImpactEffect(impactX, impactY);
+        createArrowImpactEffect(
+  this,
+  impactX,
+  impactY
+);
 
         // Impacto sonoro contra piedra
         this.sound.play("arrow-impact", {
@@ -446,50 +451,6 @@ this.playerController.setFacing(
     g.destroy();
   }
  
-
-  arrowImpactEffect(x: number, y: number) {
-    // Destello central
-    const flash = this.add.circle(x, y, 8, 0xffe08a, 1).setDepth(50);
-
-    this.tweens.add({
-      targets: flash,
-      scale: 2,
-      alpha: 0,
-      duration: 120,
-      onComplete: () => flash.destroy(),
-    });
-
-    // Pequeños fragmentos de piedra
-    for (let i = 0; i < 6; i++) {
-      const fragment = this.add
-        .rectangle(
-          x,
-          y,
-          Phaser.Math.Between(2, 4),
-          Phaser.Math.Between(2, 4),
-          0xb9a37a,
-        )
-        .setDepth(49);
-
-      const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-
-      const distance = Phaser.Math.Between(12, 25);
-
-      this.tweens.add({
-        targets: fragment,
-
-        x: x + Math.cos(angle) * distance,
-
-        y: y + Math.sin(angle) * distance,
-
-        alpha: 0,
-
-        duration: Phaser.Math.Between(150, 250),
-
-        onComplete: () => fragment.destroy(),
-      });
-    }
-  }
 
 
 
@@ -701,22 +662,12 @@ jump() {
         volume: 0.45,
       });
 
-      const arrow = this.shots.create(
-        this.player.x + this.facing * 32,
-        this.player.y - 6,
-        "arrow",
-      ) as Phaser.Physics.Arcade.Sprite;
-
-      arrow.setVelocityX(this.facing * 430);
-
-      // La imagen original mira →
-      // Si disparamos hacia ←, la invertimos.
-      arrow.setFlipX(this.facing < 0);
-
-      arrow.setData("born", this.time.now);
-      arrow.setData("startX", arrow.x);
-      arrow.setData("falling", false);
-      arrow.setData("direction", this.facing);
+      createArrow(
+  this.shots,
+  this.player,
+  this.facing,
+  this.time.now
+);
     });
 
     this.player.once(
@@ -806,47 +757,10 @@ if (world.key === "maya") {
   );
 }
 
-    this.shots?.children.iterate((o: any) => {
-      if (!o?.active) return true;
-
-      const startX = o.getData("startX");
-      const distance = Math.abs(o.x - startX);
-      const direction = o.getData("direction");
-
-      // Primer tramo: vuelo recto
-      if (distance < 120) {
-        o.setVelocityY(0);
-      }
-
-      // A partir de 120 px empieza a caer
-      else {
-        const fallDistance = distance - 120;
-
-        // Cuanto más lejos llega, más rápido cae
-        const fallSpeed = Math.min(80 + fallDistance * 2.5, 600);
-
-        o.setVelocityY(fallSpeed);
-
-        // Pierde progresivamente velocidad horizontal
-        const horizontalSpeed = Math.max(100, 430 - fallDistance * 1.2);
-
-        o.setVelocityX(direction * horizontalSpeed);
-
-        // La punta de la flecha sigue la trayectoria
-        const angle = Phaser.Math.RadToDeg(
-          Math.atan2(fallSpeed, horizontalSpeed),
-        );
-
-        o.setAngle(direction < 0 ? -angle : angle);
-      }
-
-      // Destruirla si lleva demasiado tiempo volando
-      if (this.time.now - o.getData("born") > 2500) {
-        o.destroy();
-      }
-
-      return true;
-    });
+   updateArrows(
+  this.shots,
+  this.time.now
+);
 
     if (this.player.y > HUD_TOP - 15) {
       if (this.godMode) {
