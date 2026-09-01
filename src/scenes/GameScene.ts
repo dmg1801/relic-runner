@@ -6,6 +6,11 @@ import { WORLDS } from "../config/worlds";
 
 import { getNum, setNum, getHero } from "../utils/storage";
 
+import {
+  preloadPlayerAssets,
+  createPlayerAnimations,
+} from "../Systems/PlayerAssets";
+
 import { BaseScene } from "./BaseScene";
 import { preloadMayaAssets } from "../world/maya/MayaAssets";
 import { createMayaLevel } from "../world/maya/MayaLevel";
@@ -215,65 +220,13 @@ export class GameScene extends BaseScene {
       loadingScreen.destroy(true);
     });
 
-    // ==========================================
-    // A PARTIR DE AQUÍ:
-    // TUS ASSETS DE SIEMPRE
-    // ==========================================
-
-    this.load.spritesheet(
-      "explorer-run",
-      "assets/characters/explorer/run.png",
-      {
-        frameWidth: 96,
-        frameHeight: 78,
-      },
-    );
-
-    this.load.spritesheet(
-      "explorer-idle",
-      "assets/characters/explorer/idle.png",
-      {
-        frameWidth: 43,
-        frameHeight: 78,
-      },
-    );
-
-    this.load.spritesheet(
-      "explorer-jump",
-      "assets/characters/explorer/jump.png",
-      {
-        frameWidth: 61,
-        frameHeight: 78,
-      },
-    );
-
-    this.load.spritesheet(
-      "explorer-fall",
-      "assets/characters/explorer/fall.png",
-      {
-        frameWidth: 62,
-        frameHeight: 78,
-      },
-    );
-
-    this.load.spritesheet(
-      "explorer-shoot",
-      "assets/characters/explorer/shoot.png",
-      {
-        frameWidth: 83,
-        frameHeight: 78,
-      },
-    );
+    preloadPlayerAssets(this);
 
     this.load.image("arrow", "assets/projectiles/arrow.png");
 
     this.load.audio("arrow-shot", "assets/sounds/arrow-shot.mp3");
 
     this.load.audio("arrow-impact", "assets/sounds/arrow-impact.mp3");
-
-    this.load.audio("jump", "assets/sounds/jump.wav");
-
-    this.load.audio("player-hurt", "assets/sounds/player-hurt.mp3");
 
     if (world.key === "maya") {
       preloadMayaAssets(this);
@@ -297,65 +250,14 @@ export class GameScene extends BaseScene {
       this.ambient.play();
     }
 
-    if (!this.anims.exists("explorer-run")) {
-      this.anims.create({
-        key: "explorer-run",
-        frames: this.anims.generateFrameNumbers("explorer-run", {
-          start: 0,
-          end: 7,
-        }),
-        frameRate: 10,
-        repeat: -1,
-      });
-    }
+    
+    
+createPlayerAnimations(this);
+  
 
-    if (!this.anims.exists("explorer-idle")) {
-      this.anims.create({
-        key: "explorer-idle",
-        frames: this.anims.generateFrameNumbers("explorer-idle", {
-          start: 0,
-          end: 3,
-        }),
-        frameRate: 4,
-        repeat: -1,
-      });
-    }
+  
 
-    if (!this.anims.exists("explorer-jump")) {
-      this.anims.create({
-        key: "explorer-jump",
-        frames: this.anims.generateFrameNumbers("explorer-jump", {
-          start: 0,
-          end: 7,
-        }),
-        frameRate: 10,
-        repeat: 0,
-      });
-    }
-
-    if (!this.anims.exists("explorer-fall")) {
-      this.anims.create({
-        key: "explorer-fall",
-        frames: this.anims.generateFrameNumbers("explorer-fall", {
-          start: 0,
-          end: 4,
-        }),
-        frameRate: 8,
-        repeat: 0,
-      });
-    }
-
-    if (!this.anims.exists("explorer-shoot")) {
-      this.anims.create({
-        key: "explorer-shoot",
-        frames: this.anims.generateFrameNumbers("explorer-shoot", {
-          start: 0,
-          end: 13,
-        }),
-        frameRate: 16,
-        repeat: 0,
-      });
-    }
+  
 
     if (!this.anims.exists("maya-guardian-walk")) {
       this.anims.create({
