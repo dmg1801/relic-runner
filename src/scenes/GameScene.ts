@@ -6,29 +6,27 @@ import { WORLDS } from "../config/worlds";
 
 import { getNum, setNum, getHero } from "../utils/storage";
 
-
 import {
-    preloadPlayerAssets,
-    createPlayerAnimations,
+  preloadPlayerAssets,
+  createPlayerAnimations,
 } from "../systems/PlayerAssets";
-import {
-  PlayerController
-} from "../systems/PlayerController";
+import { PlayerController } from "../systems/PlayerController";
 import {
   preloadCombatAssets,
   createArrow,
   updateArrows,
   createArrowImpactEffect,
 } from "../systems/CombatSystem";
+import { createHUD, type HUDController } from "../systems/HUD";
 
 import { BaseScene } from "./BaseScene";
 import { preloadMayaAssets } from "../world/maya/MayaAssets";
 import { createMayaLevel } from "../world/maya/MayaLevel";
 import {
-    createMayaGuardians,
-    updateMayaGuardians,
-    drawMayaGuardianHealth,
-    destroyMayaGuardian,
+  createMayaGuardians,
+  updateMayaGuardians,
+  drawMayaGuardianHealth,
+  destroyMayaGuardian,
 } from "../world/maya/MayaEnemies";
 
 export class GameScene extends BaseScene {
@@ -50,11 +48,12 @@ export class GameScene extends BaseScene {
   facing = 1;
   lastShot = 0;
   won = false;
-  hudLives!: Phaser.GameObjects.Text;
-  soundLabel!: Phaser.GameObjects.Text;
-  godLabel!: Phaser.GameObjects.Text;
+
+ 
+
   ambient?: Phaser.Sound.BaseSound;
   playerController!: PlayerController;
+  hud!: HUDController;
 
   isShooting = false;
   godMode = false;
@@ -233,7 +232,7 @@ export class GameScene extends BaseScene {
 
     preloadPlayerAssets(this);
     preloadCombatAssets(this);
-    
+
     if (world.key === "maya") {
       preloadMayaAssets(this);
     }
@@ -256,14 +255,7 @@ export class GameScene extends BaseScene {
       this.ambient.play();
     }
 
-    
-    
-createPlayerAnimations(this);
-  
-
-  
-
-  
+    createPlayerAnimations(this);
 
     if (!this.anims.exists("maya-guardian-walk")) {
       this.anims.create({
@@ -300,14 +292,9 @@ createPlayerAnimations(this);
     this.player.setScale(0.55);
     this.player.setCollideWorldBounds(true).setBounce(0.02);
 
-    this.playerController =
-  new PlayerController(
-    this.player
-  );
+    this.playerController = new PlayerController(this.player);
 
-this.playerController.setFacing(
-  this.facing
-);
+    this.playerController.setFacing(this.facing);
 
     if (world.key === "maya") {
       createMayaLevel({
@@ -352,11 +339,7 @@ this.playerController.setFacing(
         const impactY = arrow.y;
 
         // Efecto piedra/chispazo
-        createArrowImpactEffect(
-  this,
-  impactX,
-  impactY
-);
+        createArrowImpactEffect(this, impactX, impactY);
 
         // Impacto sonoro contra piedra
         this.sound.play("arrow-impact", {
@@ -429,7 +412,56 @@ this.playerController.setFacing(
     this.cameras.main.setBounds(0, 0, WORLD_W, H);
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1, 0, 45);
     this.cameras.main.setDeadzone(90, 120);
-    this.createHUD(world);
+    this.hud = createHUD({
+      scene: this,
+
+      worldName: world.name,
+      accent: world.accent,
+      lives: this.lives,
+
+      godMode: this.godMode,
+
+      onLeftDown: () => {
+        this.left = true;
+      },
+
+      onLeftUp: () => {
+        this.left = false;
+      },
+
+      onRightDown: () => {
+        this.right = true;
+      },
+
+      onRightUp: () => {
+        this.right = false;
+      },
+
+      onJump: () => {
+        this.jump();
+      },
+
+      onFireDown: () => {
+        this.firing = true;
+        this.fire();
+      },
+
+      onFireUp: () => {
+        this.firing = false;
+      },
+
+      onPause: () => {
+       this.pauseMenu();
+      },
+
+      onToggleSound: () => {
+        this.toggleSound();
+      },
+
+      onGodModeToggle: () => {
+        this.toggleGodMode();
+      },
+    });
   }
   makeTextures(world: (typeof WORLDS)[number]) {
     ["hero", "relic", "shot"].forEach((k) => {
@@ -450,193 +482,33 @@ this.playerController.setFacing(
     g.clear();
     g.destroy();
   }
+
  
+ resetControls() {
+    this.left = false;
+    this.right = false;
+    this.firing = false;
 
-
-
-  createHUD(world: (typeof WORLDS)[number]) {
-    const hud = this.add
-      .rectangle(W / 2, (HUD_TOP + H) / 2, W, H - HUD_TOP, 0x11100d, 0.98)
-      .setScrollFactor(0)
-      .setDepth(100)
-      .setStrokeStyle(2, world.accent);
-    this.add
-      .rectangle(W / 2, HUD_TOP, W, 3, world.accent)
-      .setScrollFactor(0)
-      .setDepth(101);
-    this.hudLives = this.add
-      .text(14, 635, "♥ ♥ ♥", {
-        fontFamily: "monospace",
-        fontSize: "20px",
-        color: "#ff7777",
-      })
-      .setScrollFactor(0)
-      .setDepth(102);
-
-    const worldLabel = this.add
-      .text(W / 2, 638, world.name, {
-        fontFamily: "monospace",
-        fontSize: "14px",
-        color: "#e7c66e",
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(102)
-      .setInteractive();
-
-    let secretTaps = 0;
-    let lastSecretTap = 0;
-
-    worldLabel.on("pointerdown", () => {
-      // Si tardaste más de 2 segundos,
-      // comenzamos la secuencia de nuevo.
-      if (this.time.now - lastSecretTap > 2000) {
-        secretTaps = 0;
-      }
-
-      lastSecretTap = this.time.now;
-      secretTaps++;
-
-      if (secretTaps >= 5) {
-        secretTaps = 0;
-        this.toggleGodMode();
-      }
-    });
-
-    this.godLabel = this.add
-      .text(W / 2, 660, "DEV MODE", {
-        fontFamily: "monospace",
-        fontSize: "10px",
-        color: "#ffd700",
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(150)
-      .setVisible(false);
-
-    this.touchButton(
-      55,
-      710,
-      "◀",
-      () => (this.left = true),
-      () => (this.left = false),
-    );
-    this.touchButton(
-      125,
-      710,
-      "▶",
-      () => (this.right = true),
-      () => (this.right = false),
-    );
-
-    this.touchButton(
-      305,
-      710,
-      "✦",
-      () => {
-        this.firing = true;
-        this.fire();
-      },
-      () => {
-        this.firing = false;
-      },
-    );
-
-    this.touchButton(
-      375,
-      710,
-      "▲",
-      () => this.jump(),
-      () => {},
-    );
-    const pause = this.add
-      .text(405, 635, "Ⅱ", { fontSize: "23px", color: "#fff" })
-      .setOrigin(1, 0)
-      .setInteractive()
-      .setScrollFactor(0)
-      .setDepth(103);
-    pause.on("pointerdown", () => this.pauseMenu());
-    this.soundLabel = this.add
-      .text(360, 637, localStorage.getItem("music") === "off" ? "×♪" : "♪", {
-        fontSize: "20px",
-        color: "#fff",
-      })
-      .setOrigin(1, 0)
-      .setInteractive()
-      .setScrollFactor(0)
-      .setDepth(103);
-    this.soundLabel.on("pointerdown", () => this.toggleSound());
-    hud.setInteractive();
-  }
-  touchButton(
-    x: number,
-    y: number,
-    label: string,
-    down: () => void,
-    up: () => void,
-  ) {
-    const button = this.add
-      .circle(x, y, 32, 0x000000, 0.45)
-      .setStrokeStyle(2, 0xffffff, 0.75)
-      .setScrollFactor(0)
-      .setDepth(110)
-      .setInteractive();
-
-    const text = this.txt(x, y, label, 24).setScrollFactor(0).setDepth(111);
-
-    // El texto es puramente visual.
-    // Toda la interacción pertenece al círculo.
-    text.disableInteractive();
-
-    button.on("pointerdown", (_pointer: Phaser.Input.Pointer) => {
-      button.setAlpha(0.65);
-      down();
-    });
-
-    button.on("pointerup", (_pointer: Phaser.Input.Pointer) => {
-      button.setAlpha(1);
-      up();
-    });
-
-    button.on("pointerupoutside", (_pointer: Phaser.Input.Pointer) => {
-      button.setAlpha(1);
-      up();
-    });
-
-    button.on("pointerout", (_pointer: Phaser.Input.Pointer) => {
-      button.setAlpha(1);
-      up();
-    });
-  }
-resetControls() {
-  this.left = false;
-  this.right = false;
-  this.firing = false;
-
-  if (this.playerController) {
-    this.playerController.stop();
-  }
-}
-
-jump() {
-  if (this.paused) {
-    return;
-  }
-
-  const jumped =
-    this.playerController.jump();
-
-  if (!jumped) {
-    return;
-  }
-
-  this.sound.play(
-    "jump",
-    {
-      volume: 0.6,
+    if (this.playerController) {
+      this.playerController.stop();
     }
-  );
-}
+  }
+
+  jump() {
+    if (this.paused) {
+      return;
+    }
+
+    const jumped = this.playerController.jump();
+
+    if (!jumped) {
+      return;
+    }
+
+    this.sound.play("jump", {
+      volume: 0.6,
+    });
+  }
 
   fire() {
     if (
@@ -662,12 +534,7 @@ jump() {
         volume: 0.45,
       });
 
-      createArrow(
-  this.shots,
-  this.player,
-  this.facing,
-  this.time.now
-);
+      createArrow(this.shots, this.player, this.facing, this.time.now);
     });
 
     this.player.once(
@@ -710,57 +577,32 @@ jump() {
   }
 
   updateLives() {
-    this.hudLives.setText(
-      Array.from({ length: 3 }, (_, i) => (i < this.lives ? "♥" : "♡")).join(
-        " ",
-      ),
-    );
+    this.hud.updateLives(
+  this.lives
+);
   }
   update() {
-    const keyA =
-  this.input.keyboard!.addKey("A");
+    const keyA = this.input.keyboard!.addKey("A");
 
-const keyD =
-  this.input.keyboard!.addKey("D");
+    const keyD = this.input.keyboard!.addKey("D");
 
-const moveLeft =
-  this.left ||
-  this.cursors.left.isDown ||
-  keyA.isDown;
+    const moveLeft = this.left || this.cursors.left.isDown || keyA.isDown;
 
-const moveRight =
-  this.right ||
-  this.cursors.right.isDown ||
-  keyD.isDown;
+    const moveRight = this.right || this.cursors.right.isDown || keyD.isDown;
 
-const vx =
-  this.playerController.move(
-    moveLeft,
-    moveRight
-  );
+    const vx = this.playerController.move(moveLeft, moveRight);
 
-this.facing =
-  this.playerController.getFacing();
+    this.facing = this.playerController.getFacing();
 
-  this.playerController
-  .updateAnimation(
-    vx,
-    this.isShooting
-  );
+    this.playerController.updateAnimation(vx, this.isShooting);
 
-   const world =
-  WORLDS[this.idx];
+    const world = WORLDS[this.idx];
 
-if (world.key === "maya") {
-  updateMayaGuardians(
-    this.enemies
-  );
-}
+    if (world.key === "maya") {
+      updateMayaGuardians(this.enemies);
+    }
 
-   updateArrows(
-  this.shots,
-  this.time.now
-);
+    updateArrows(this.shots, this.time.now);
 
     if (this.player.y > HUD_TOP - 15) {
       if (this.godMode) {
@@ -778,21 +620,34 @@ if (world.key === "maya") {
   }
 
   toggleGodMode() {
-    this.godMode = !this.godMode;
+    this.godMode =
+  !this.godMode;
 
-    if (this.godLabel) {
-      this.godLabel.setVisible(this.godMode);
-    }
-
+this.hud?.setGodMode(
+  this.godMode
+);
     console.log(this.godMode ? "GOD MODE ACTIVATED" : "GOD MODE DEACTIVATED");
   }
 
   toggleSound() {
-    const off = localStorage.getItem("music") === "off";
-    localStorage.setItem("music", off ? "on" : "off");
-    this.soundLabel.setText(off ? "♪" : "×♪");
-    this.sound.mute = !off;
-  }
+  const currentlyOff =
+    localStorage.getItem("music") === "off";
+
+  const soundEnabled =
+    currentlyOff;
+
+  localStorage.setItem(
+    "music",
+    soundEnabled ? "on" : "off"
+  );
+
+  this.sound.mute =
+    !soundEnabled;
+
+  this.hud.setSoundEnabled(
+    soundEnabled
+  );
+}
   pauseMenu() {
     if (this.paused || this.won) return;
     this.resetControls();
