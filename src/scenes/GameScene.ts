@@ -9,15 +9,15 @@ import { getNum, setNum } from "../utils/storage";
 import {
   preloadPlayerAssets,
   createPlayerAnimations,
-} from "../systems/PlayerAssets";
-import { PlayerController } from "../systems/PlayerController";
+} from "../system/PlayerAssets";
+import { PlayerController } from "../system/PlayerController";
 import {
   preloadCombatAssets,
   createArrow,
   updateArrows,
   createArrowImpactEffect,
-} from "../systems/CombatSystem";
-import { createHUD, type HUDController } from "../systems/HUD";
+} from "../system/CombatSystem";
+import { createHUD, type HUDController } from "../system/HUD";
 
 import { BaseScene } from "./BaseScene";
 import {
@@ -33,7 +33,7 @@ import {
 import {
   startWorldAmbient,
   stopWorldAmbient,
-} from "../systems/WorldAudio";
+} from "../system/WorldAudio";
 
 export class GameScene extends BaseScene {
   constructor() {
