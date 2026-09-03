@@ -25,8 +25,7 @@ import { createMayaLevel } from "../world/maya/MayaLevel";
 import {
   createMayaGuardians,
   updateMayaGuardians,
-  drawMayaGuardianHealth,
-  destroyMayaGuardian,
+  hitMayaGuardian,
 } from "../world/maya/MayaEnemies";
 
 export class GameScene extends BaseScene {
@@ -326,52 +325,49 @@ export class GameScene extends BaseScene {
     );
     this.shots = this.physics.add.group({ allowGravity: false });
     this.physics.add.collider(this.shots, this.platforms, (s) => s.destroy());
-    this.physics.add.overlap(
-      this.shots,
-      this.enemies,
-      (s, enemyObject) => {
-        const arrow = s as Phaser.Physics.Arcade.Sprite;
+  this.physics.add.overlap(
+  this.shots,
+  this.enemies,
+  (shotObject, enemyObject) => {
+    const arrow =
+      shotObject as Phaser.Physics.Arcade.Sprite;
 
-        const enemy = enemyObject as Phaser.Physics.Arcade.Sprite;
+    const enemy =
+      enemyObject as Phaser.Physics.Arcade.Sprite;
 
-        // Guardamos el punto exacto del impacto
-        const impactX = arrow.x;
-        const impactY = arrow.y;
+    // Punto exacto del impacto
+    const impactX = arrow.x;
+    const impactY = arrow.y;
 
-        // Efecto piedra/chispazo
-        createArrowImpactEffect(this, impactX, impactY);
-
-        // Impacto sonoro contra piedra
-        this.sound.play("arrow-impact", {
-          volume: 0.5,
-        });
-
-        // La flecha desaparece
-        arrow.destroy();
-        // Quitar 1 HP
-        const hp = enemy.getData("hp") ?? 4;
-        const newHp = hp - 1;
-
-        enemy.setData("hp", newHp);
-
-        // Feedback provisional
-        enemy.setTint(0xffffff);
-
-        this.time.delayedCall(100, () => {
-          if (enemy.active) {
-            enemy.clearTint();
-          }
-        });
-
-        drawMayaGuardianHealth(enemy);
-
-        if (newHp <= 0) {
-          destroyMayaGuardian(this, enemy);
-        }
-      },
-      undefined,
+    // Feedback genérico del proyectil
+    createArrowImpactEffect(
       this,
+      impactX,
+      impactY
     );
+
+    this.sound.play(
+      "arrow-impact",
+      {
+        volume: 0.5,
+      }
+    );
+
+    // La flecha desaparece
+    arrow.destroy();
+
+    // El mundo decide qué le ocurre
+    // a su enemigo.
+    if (world.key === "maya") {
+      hitMayaGuardian(
+        this,
+        enemy
+      );
+    }
+  },
+  undefined,
+  this,
+);
     // spikes / traps
     // Maya spikes / traps
 

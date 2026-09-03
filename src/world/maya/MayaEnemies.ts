@@ -313,4 +313,48 @@ export function destroyMayaGuardian(
       },
     });
   }
+
+  
+}
+
+export function hitMayaGuardian(
+  scene: Phaser.Scene,
+  guardian: Phaser.Physics.Arcade.Sprite
+): void {
+  if (!guardian.active) {
+    return;
+  }
+
+  const hp =
+    guardian.getData("hp") ?? 4;
+
+  const newHp = hp - 1;
+
+  guardian.setData(
+    "hp",
+    newHp
+  );
+
+  // Feedback visual del impacto
+  guardian.setTint(0xffffff);
+
+  scene.time.delayedCall(
+    100,
+    () => {
+      if (guardian.active) {
+        guardian.clearTint();
+      }
+    }
+  );
+
+  drawMayaGuardianHealth(
+    guardian
+  );
+
+  if (newHp <= 0) {
+    destroyMayaGuardian(
+      scene,
+      guardian
+    );
+  }
 }
