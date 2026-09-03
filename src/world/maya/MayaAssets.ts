@@ -1,12 +1,12 @@
 import Phaser from "phaser";
 
+// ==========================================
+// ASSETS
+// ==========================================
+
 export function preloadMayaAssets(
   scene: Phaser.Scene
 ): void {
-  // ==========================================
-  // ESCENARIO MAYA
-  // ==========================================
-
   scene.load.image(
     "maya-background",
     "assets/worlds/maya/background.png"
@@ -32,10 +32,6 @@ export function preloadMayaAssets(
     "assets/worlds/maya/spike.png"
   );
 
-  // ==========================================
-  // GUARDIÁN MAYA
-  // ==========================================
-
   scene.load.spritesheet(
     "maya-guardian-walk",
     "assets/enemies/maya/stone-guardian-walk.png",
@@ -44,10 +40,6 @@ export function preloadMayaAssets(
       frameHeight: 100,
     }
   );
-
-  // ==========================================
-  // RELIQUIA
-  // ==========================================
 
   scene.load.spritesheet(
     "maya-jade-mask",
@@ -58,10 +50,6 @@ export function preloadMayaAssets(
     }
   );
 
-  // ==========================================
-  // AMBIENTE
-  // ==========================================
-
   scene.load.audio(
     "maya-jungle-ambience",
     "assets/sounds/maya-jungle-ambience.wav"
@@ -71,4 +59,58 @@ export function preloadMayaAssets(
     "guardian-crumble",
     "assets/sounds/guardian-crumble.mp3"
   );
+}
+
+
+// ==========================================
+// ANIMACIONES
+// ==========================================
+
+export function createMayaAnimations(
+  scene: Phaser.Scene
+): void {
+  if (
+    !scene.anims.exists(
+      "maya-guardian-walk"
+    )
+  ) {
+    scene.anims.create({
+      key: "maya-guardian-walk",
+
+      frames:
+        scene.anims.generateFrameNumbers(
+          "maya-guardian-walk",
+          {
+            start: 0,
+            end: 7,
+          }
+        ),
+
+      frameRate: 8,
+      repeat: -1,
+    });
+  }
+
+
+  if (
+    !scene.anims.exists(
+      "maya-jade-mask-glow"
+    )
+  ) {
+    scene.anims.create({
+      key: "maya-jade-mask-glow",
+
+      frames:
+        scene.anims.generateFrameNumbers(
+          "maya-jade-mask",
+          {
+            start: 0,
+            end: 7,
+          }
+        ),
+
+      frameRate: 5,
+      repeat: -1,
+    });
+  }
 }

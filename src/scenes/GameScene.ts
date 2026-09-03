@@ -20,7 +20,10 @@ import {
 import { createHUD, type HUDController } from "../systems/HUD";
 
 import { BaseScene } from "./BaseScene";
-import { preloadMayaAssets } from "../world/maya/MayaAssets";
+import {
+  preloadMayaAssets,
+  createMayaAnimations,
+} from "../world/maya/MayaAssets";
 import { createMayaLevel } from "../world/maya/MayaLevel";
 import {
   createMayaGuardians,
@@ -255,30 +258,11 @@ export class GameScene extends BaseScene {
     }
 
     createPlayerAnimations(this);
+    createPlayerAnimations(this);
 
-    if (!this.anims.exists("maya-guardian-walk")) {
-      this.anims.create({
-        key: "maya-guardian-walk",
-        frames: this.anims.generateFrameNumbers("maya-guardian-walk", {
-          start: 0,
-          end: 7,
-        }),
-        frameRate: 8,
-        repeat: -1,
-      });
-    }
-
-    if (!this.anims.exists("maya-jade-mask-glow")) {
-      this.anims.create({
-        key: "maya-jade-mask-glow",
-        frames: this.anims.generateFrameNumbers("maya-jade-mask", {
-          start: 0,
-          end: 7,
-        }),
-        frameRate: 5,
-        repeat: -1,
-      });
-    }
+if (world.key === "maya") {
+  createMayaAnimations(this);
+}
 
     this.cameras.main.setBackgroundColor(world.bg);
     this.physics.world.setBounds(0, 0, WORLD_W, HUD_TOP);
