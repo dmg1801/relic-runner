@@ -4,7 +4,7 @@ import { W, H, HUD_TOP, WORLD_W } from "../config/constants";
 
 import { WORLDS } from "../config/worlds";
 
-import { getNum, setNum, getHero } from "../utils/storage";
+import { getNum, setNum } from "../utils/storage";
 
 import {
   preloadPlayerAssets,
@@ -61,6 +61,8 @@ export class GameScene extends BaseScene {
 
   isShooting = false;
   godMode = false;
+  keyA!: Phaser.Input.Keyboard.Key;
+keyD!: Phaser.Input.Keyboard.Key;
   init(d: { idx: number }) {
     this.idx = d.idx ?? 0;
 
@@ -262,12 +264,11 @@ if (world.key === "maya") {
   createMayaAnimations(this);
 }
 
-    this.cameras.main.setBackgroundColor(world.bg);
-    this.physics.world.setBounds(0, 0, WORLD_W, HUD_TOP);
-    this.makeTextures(world);
-    // Placeholder background layers. Replace these rectangles with tileSprites/images in public/assets/worlds/<world>/.
+  this.cameras.main.setBackgroundColor(world.bg);
+this.physics.world.setBounds(0, 0, WORLD_W, HUD_TOP);
 
-    this.platforms = this.physics.add.staticGroup();
+this.platforms =
+  this.physics.add.staticGroup();
 
     this.player = this.physics.add.sprite(90, 530, "explorer-idle", 0);
     this.player.setScale(0.55);
@@ -355,10 +356,18 @@ if (world.key === "maya") {
 
     this.input.keyboard!.removeAllListeners();
 
-    this.cursors = this.input.keyboard!.createCursorKeys();
+    this.cursors =
+  this.input.keyboard!.createCursorKeys();
 
-    this.input.keyboard!.addKey("A");
-    this.input.keyboard!.addKey("D");
+this.keyA =
+  this.input.keyboard!.addKey(
+    Phaser.Input.Keyboard.KeyCodes.A
+  );
+
+this.keyD =
+  this.input.keyboard!.addKey(
+    Phaser.Input.Keyboard.KeyCodes.D
+  );
     this.input.keyboard!.on("keydown-SPACE", () => {
       this.jump();
     });
@@ -440,25 +449,6 @@ this.ambient = undefined;
         this.toggleGodMode();
       },
     });
-  }
-  makeTextures(world: (typeof WORLDS)[number]) {
-    ["hero", "relic", "shot"].forEach((k) => {
-      if (this.textures.exists(k)) this.textures.remove(k);
-    });
-    const g = this.make.graphics({ x: 0, y: 0 }, false);
-    g.fillStyle(getHero() === "explorer" ? 0x4f93d1 : 0xd85e74);
-    g.fillRect(0, 0, 30, 46);
-    g.generateTexture("hero", 30, 46);
-    g.clear();
-    g.fillStyle(world.accent);
-    g.fillRect(0, 0, 38, 38);
-    g.generateTexture("relic", 38, 38);
-    g.clear();
-    g.fillStyle(0xffe06b);
-    g.fillCircle(6, 6, 6);
-    g.generateTexture("shot", 12, 12);
-    g.clear();
-    g.destroy();
   }
 
  
@@ -560,13 +550,15 @@ this.ambient = undefined;
 );
   }
   update() {
-    const keyA = this.input.keyboard!.addKey("A");
+    const moveLeft =
+  this.left ||
+  this.cursors.left.isDown ||
+  this.keyA.isDown;
 
-    const keyD = this.input.keyboard!.addKey("D");
-
-    const moveLeft = this.left || this.cursors.left.isDown || keyA.isDown;
-
-    const moveRight = this.right || this.cursors.right.isDown || keyD.isDown;
+const moveRight =
+  this.right ||
+  this.cursors.right.isDown ||
+  this.keyD.isDown;
 
     const vx = this.playerController.move(moveLeft, moveRight);
 
