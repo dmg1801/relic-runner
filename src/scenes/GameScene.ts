@@ -30,6 +30,10 @@ import {
   updateMayaGuardians,
   hitMayaGuardian,
 } from "../world/maya/MayaEnemies";
+import {
+  startWorldAmbient,
+  stopWorldAmbient,
+} from "../systems/WorldAudio";
 
 export class GameScene extends BaseScene {
   constructor() {
@@ -50,8 +54,6 @@ export class GameScene extends BaseScene {
   facing = 1;
   lastShot = 0;
   won = false;
-
- 
 
   ambient?: Phaser.Sound.BaseSound;
   playerController!: PlayerController;
@@ -247,15 +249,11 @@ export class GameScene extends BaseScene {
     // Aplicar la preferencia de sonido guardada
     this.sound.mute = localStorage.getItem("music") === "off";
 
-    // Ambiente propio del mundo Maya
-    if (world.key === "maya") {
-      this.ambient = this.sound.add("maya-jungle-ambience", {
-        loop: true,
-        volume: 0.2,
-      });
-
-      this.ambient.play();
-    }
+    this.ambient =
+  startWorldAmbient(
+    this,
+    world.key
+  );
 
     createPlayerAnimations(this);
     createPlayerAnimations(this);
@@ -383,11 +381,11 @@ if (world.key === "maya") {
 
       // Detener el ambiente al abandonar
       // la expedición
-      if (this.ambient) {
-        this.ambient.stop();
-        this.ambient.destroy();
-        this.ambient = undefined;
-      }
+      stopWorldAmbient(
+  this.ambient
+);
+
+this.ambient = undefined;
     });
     this.cameras.main.setBounds(0, 0, WORLD_W, H);
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1, 0, 45);
