@@ -64,6 +64,24 @@ scene.load.spritesheet(
   }
 );
 
+scene.load.spritesheet(
+  "adventurer-run",
+  "assets/characters/adventurer/run.png",
+  {
+    frameWidth: 50,
+    frameHeight: 78,
+  }
+);
+
+scene.load.spritesheet(
+  "adventurer-jump",
+  "assets/characters/adventurer/jump.png",
+  {
+    frameWidth: 53,
+    frameHeight: 78,
+  }
+);
+
 
   // ==========================================
   // SONIDOS DEL JUGADOR
@@ -149,6 +167,48 @@ export function createPlayerAnimations(
     repeat: -1,
   });
 }
+
+
+  // ==========================================
+  // RUN ADVENTURER
+  // ==========================================
+
+  if (!scene.anims.exists("adventurer-run")) {
+    scene.anims.create({
+      key: "adventurer-run",
+      frames:
+        scene.anims.generateFrameNumbers(
+          "adventurer-run",
+          {
+            start: 0,
+            end: 7,
+          }
+        ),
+      frameRate: 10,
+      repeat: -1,
+    });
+  }
+
+
+  // ==========================================
+  // JUMP ADVENTURER
+  // ==========================================
+
+  if (!scene.anims.exists("adventurer-jump")) {
+    scene.anims.create({
+      key: "adventurer-jump",
+      frames:
+        scene.anims.generateFrameNumbers(
+          "adventurer-jump",
+          {
+            start: 0,
+            end: 7,
+          }
+        ),
+      frameRate: 10,
+      repeat: 0,
+    });
+  }
 
 
   // ==========================================

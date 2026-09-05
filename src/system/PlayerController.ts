@@ -63,14 +63,49 @@ export class PlayerController {
     velocityX: number,
     isShooting: boolean
   ): void {
-    // La exploradora sólo tiene IDLE por ahora.
-    // Mantiene esta animación mientras añadimos
-    // run / jump / fall / shoot progresivamente.
+    // Exploradora: IDLE, RUN y JUMP.
     if (this.hero === "adventurer") {
-      this.player.play(
-        "adventurer-idle",
-        true
-      );
+      if (isShooting) {
+        return;
+      }
+
+      const onGround =
+        this.player.body?.blocked.down;
+
+      const velocityY =
+        this.player.body?.velocity.y ?? 0;
+
+      if (!onGround && velocityY < 0) {
+        if (
+          this.player.anims.currentAnim?.key !==
+          "adventurer-jump"
+        ) {
+          this.player.play(
+            "adventurer-jump"
+          );
+        }
+
+        return;
+      }
+
+      // Aún no tenemos FALL:
+      // durante la caída conservamos el último frame de JUMP.
+      if (!onGround && velocityY >= 0) {
+        return;
+      }
+
+      if (velocityX !== 0) {
+        this.player.play(
+          "adventurer-run",
+          true
+        );
+      } else {
+        this.player.play(
+          "adventurer-idle",
+          true
+        );
+      }
+
       return;
     }
 
