@@ -30,10 +30,9 @@ import {
   updateMayaGuardians,
   hitMayaGuardian,
 } from "../world/maya/MayaEnemies";
-import {
-  startWorldAmbient,
-  stopWorldAmbient,
-} from "../system/WorldAudio";
+import { startWorldAmbient, stopWorldAmbient } from "../system/WorldAudio";
+
+import { getHero } from "../utils/storage";
 
 export class GameScene extends BaseScene {
   constructor() {
@@ -62,7 +61,7 @@ export class GameScene extends BaseScene {
   isShooting = false;
   godMode = false;
   keyA!: Phaser.Input.Keyboard.Key;
-keyD!: Phaser.Input.Keyboard.Key;
+  keyD!: Phaser.Input.Keyboard.Key;
   init(d: { idx: number }) {
     this.idx = d.idx ?? 0;
 
@@ -251,30 +250,33 @@ keyD!: Phaser.Input.Keyboard.Key;
     // Aplicar la preferencia de sonido guardada
     this.sound.mute = localStorage.getItem("music") === "off";
 
-    this.ambient =
-  startWorldAmbient(
-    this,
-    world.key
-  );
+    this.ambient = startWorldAmbient(this, world.key);
 
     createPlayerAnimations(this);
-    createPlayerAnimations(this);
 
-if (world.key === "maya") {
-  createMayaAnimations(this);
-}
+    if (world.key === "maya") {
+      createMayaAnimations(this);
+    }
 
-  this.cameras.main.setBackgroundColor(world.bg);
-this.physics.world.setBounds(0, 0, WORLD_W, HUD_TOP);
+    this.cameras.main.setBackgroundColor(world.bg);
+    this.physics.world.setBounds(0, 0, WORLD_W, HUD_TOP);
 
-this.platforms =
-  this.physics.add.staticGroup();
+    this.platforms = this.physics.add.staticGroup();
 
-    this.player = this.physics.add.sprite(90, 530, "explorer-idle", 0);
+    const hero = getHero();
+
+    const initialTexture =
+      hero === "adventurer" ? "adventurer-idle" : "explorer-idle";
+
+    this.player = this.physics.add.sprite(120, 500, initialTexture);
     this.player.setScale(0.55);
     this.player.setCollideWorldBounds(true).setBounce(0.02);
 
-    this.playerController = new PlayerController(this.player);
+    this.playerController =
+  new PlayerController(
+    this.player,
+    hero
+  );
 
     this.playerController.setFacing(this.facing);
 
@@ -308,66 +310,47 @@ this.platforms =
     );
     this.shots = this.physics.add.group({ allowGravity: false });
     this.physics.add.collider(this.shots, this.platforms, (s) => s.destroy());
-  this.physics.add.overlap(
-  this.shots,
-  this.enemies,
-  (shotObject, enemyObject) => {
-    const arrow =
-      shotObject as Phaser.Physics.Arcade.Sprite;
+    this.physics.add.overlap(
+      this.shots,
+      this.enemies,
+      (shotObject, enemyObject) => {
+        const arrow = shotObject as Phaser.Physics.Arcade.Sprite;
 
-    const enemy =
-      enemyObject as Phaser.Physics.Arcade.Sprite;
+        const enemy = enemyObject as Phaser.Physics.Arcade.Sprite;
 
-    // Punto exacto del impacto
-    const impactX = arrow.x;
-    const impactY = arrow.y;
+        // Punto exacto del impacto
+        const impactX = arrow.x;
+        const impactY = arrow.y;
 
-    // Feedback genérico del proyectil
-    createArrowImpactEffect(
+        // Feedback genérico del proyectil
+        createArrowImpactEffect(this, impactX, impactY);
+
+        this.sound.play("arrow-impact", {
+          volume: 0.5,
+        });
+
+        // La flecha desaparece
+        arrow.destroy();
+
+        // El mundo decide qué le ocurre
+        // a su enemigo.
+        if (world.key === "maya") {
+          hitMayaGuardian(this, enemy);
+        }
+      },
+      undefined,
       this,
-      impactX,
-      impactY
     );
-
-    this.sound.play(
-      "arrow-impact",
-      {
-        volume: 0.5,
-      }
-    );
-
-    // La flecha desaparece
-    arrow.destroy();
-
-    // El mundo decide qué le ocurre
-    // a su enemigo.
-    if (world.key === "maya") {
-      hitMayaGuardian(
-        this,
-        enemy
-      );
-    }
-  },
-  undefined,
-  this,
-);
     // spikes / traps
     // Maya spikes / traps
 
     this.input.keyboard!.removeAllListeners();
 
-    this.cursors =
-  this.input.keyboard!.createCursorKeys();
+    this.cursors = this.input.keyboard!.createCursorKeys();
 
-this.keyA =
-  this.input.keyboard!.addKey(
-    Phaser.Input.Keyboard.KeyCodes.A
-  );
+    this.keyA = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A);
 
-this.keyD =
-  this.input.keyboard!.addKey(
-    Phaser.Input.Keyboard.KeyCodes.D
-  );
+    this.keyD = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D);
     this.input.keyboard!.on("keydown-SPACE", () => {
       this.jump();
     });
@@ -390,11 +373,9 @@ this.keyD =
 
       // Detener el ambiente al abandonar
       // la expedición
-      stopWorldAmbient(
-  this.ambient
-);
+      stopWorldAmbient(this.ambient);
 
-this.ambient = undefined;
+      this.ambient = undefined;
     });
     this.cameras.main.setBounds(0, 0, WORLD_W, H);
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1, 0, 45);
@@ -438,7 +419,7 @@ this.ambient = undefined;
       },
 
       onPause: () => {
-       this.pauseMenu();
+        this.pauseMenu();
       },
 
       onToggleSound: () => {
@@ -451,8 +432,7 @@ this.ambient = undefined;
     });
   }
 
- 
- resetControls() {
+  resetControls() {
     this.left = false;
     this.right = false;
     this.firing = false;
@@ -545,20 +525,13 @@ this.ambient = undefined;
   }
 
   updateLives() {
-    this.hud.updateLives(
-  this.lives
-);
+    this.hud.updateLives(this.lives);
   }
   update() {
-    const moveLeft =
-  this.left ||
-  this.cursors.left.isDown ||
-  this.keyA.isDown;
+    const moveLeft = this.left || this.cursors.left.isDown || this.keyA.isDown;
 
-const moveRight =
-  this.right ||
-  this.cursors.right.isDown ||
-  this.keyD.isDown;
+    const moveRight =
+      this.right || this.cursors.right.isDown || this.keyD.isDown;
 
     const vx = this.playerController.move(moveLeft, moveRight);
 
@@ -590,34 +563,23 @@ const moveRight =
   }
 
   toggleGodMode() {
-    this.godMode =
-  !this.godMode;
+    this.godMode = !this.godMode;
 
-this.hud?.setGodMode(
-  this.godMode
-);
+    this.hud?.setGodMode(this.godMode);
     console.log(this.godMode ? "GOD MODE ACTIVATED" : "GOD MODE DEACTIVATED");
   }
 
   toggleSound() {
-  const currentlyOff =
-    localStorage.getItem("music") === "off";
+    const currentlyOff = localStorage.getItem("music") === "off";
 
-  const soundEnabled =
-    currentlyOff;
+    const soundEnabled = currentlyOff;
 
-  localStorage.setItem(
-    "music",
-    soundEnabled ? "on" : "off"
-  );
+    localStorage.setItem("music", soundEnabled ? "on" : "off");
 
-  this.sound.mute =
-    !soundEnabled;
+    this.sound.mute = !soundEnabled;
 
-  this.hud.setSoundEnabled(
-    soundEnabled
-  );
-}
+    this.hud.setSoundEnabled(soundEnabled);
+  }
   pauseMenu() {
     if (this.paused || this.won) return;
     this.resetControls();

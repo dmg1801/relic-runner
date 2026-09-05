@@ -4,7 +4,7 @@ export function preloadPlayerAssets(
   scene: Phaser.Scene
 ): void {
   // ==========================================
-  // EXPLORER
+  // EXPLORER MOVEMENTS
   // ==========================================
 
   scene.load.spritesheet(
@@ -52,6 +52,19 @@ export function preloadPlayerAssets(
     }
   );
 
+ // ==========================================
+  // ADVENTURER MOVEMENTS
+  // ==========================================
+scene.load.spritesheet(
+  "adventurer-idle",
+  "assets/characters/adventurer/idle.png",
+  {
+    frameWidth: 43,
+    frameHeight: 78,
+  }
+);
+
+
   // ==========================================
   // SONIDOS DEL JUGADOR
   // ==========================================
@@ -95,7 +108,7 @@ export function createPlayerAnimations(
 
 
   // ==========================================
-  // IDLE
+  // IDLE EXPLORER
   // ==========================================
 
   if (!scene.anims.exists("explorer-idle")) {
@@ -115,6 +128,27 @@ export function createPlayerAnimations(
       repeat: -1,
     });
   }
+
+   // ==========================================
+  // ADVENTURER EXPLORER
+  // ==========================================
+
+
+  if (!scene.anims.exists("adventurer-idle")) {
+  scene.anims.create({
+    key: "adventurer-idle",
+    frames:
+      scene.anims.generateFrameNumbers(
+        "adventurer-idle",
+        {
+          start: 0,
+          end: 4,
+        }
+      ),
+    frameRate: 5,
+    repeat: -1,
+  });
+}
 
 
   // ==========================================

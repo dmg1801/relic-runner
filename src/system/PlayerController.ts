@@ -1,15 +1,13 @@
 import Phaser from "phaser";
+import type { HeroKey } from "../types/game";
 
 export class PlayerController {
-  private player: Phaser.Physics.Arcade.Sprite;
-
   private facing = 1;
 
   constructor(
-    player: Phaser.Physics.Arcade.Sprite
-  ) {
-    this.player = player;
-  }
+    private player: Phaser.Physics.Arcade.Sprite,
+    private hero: HeroKey
+  ) {}
 
   // ==========================================
   // MOVIMIENTO
@@ -31,9 +29,7 @@ export class PlayerController {
       }
     }
 
-    this.player.setVelocityX(
-      velocityX
-    );
+    this.player.setVelocityX(velocityX);
 
     if (velocityX < 0) {
       this.player.setFlipX(true);
@@ -46,23 +42,18 @@ export class PlayerController {
     return velocityX;
   }
 
-
   // ==========================================
   // SALTO
   // ==========================================
 
   jump(): boolean {
-    if (
-      !this.player.body?.blocked.down
-    ) {
+    if (!this.player.body?.blocked.down) {
       return false;
     }
 
     this.player.setVelocityY(-600);
-
     return true;
   }
-
 
   // ==========================================
   // ANIMACIONES DE MOVIMIENTO
@@ -72,6 +63,17 @@ export class PlayerController {
     velocityX: number,
     isShooting: boolean
   ): void {
+    // La exploradora sólo tiene IDLE por ahora.
+    // Mantiene esta animación mientras añadimos
+    // run / jump / fall / shoot progresivamente.
+    if (this.hero === "adventurer") {
+      this.player.play(
+        "adventurer-idle",
+        true
+      );
+      return;
+    }
+
     if (isShooting) {
       return;
     }
@@ -82,37 +84,23 @@ export class PlayerController {
     const velocityY =
       this.player.body?.velocity.y ?? 0;
 
-    if (
-      !onGround &&
-      velocityY < 0
-    ) {
+    if (!onGround && velocityY < 0) {
       if (
-        this.player.anims
-          .currentAnim?.key !==
+        this.player.anims.currentAnim?.key !==
         "explorer-jump"
       ) {
-        this.player.play(
-          "explorer-jump"
-        );
+        this.player.play("explorer-jump");
       }
-
       return;
     }
 
-    if (
-      !onGround &&
-      velocityY >= 0
-    ) {
+    if (!onGround && velocityY >= 0) {
       if (
-        this.player.anims
-          .currentAnim?.key !==
+        this.player.anims.currentAnim?.key !==
         "explorer-fall"
       ) {
-        this.player.play(
-          "explorer-fall"
-        );
+        this.player.play("explorer-fall");
       }
-
       return;
     }
 
@@ -121,7 +109,6 @@ export class PlayerController {
         "explorer-run",
         true
       );
-
       return;
     }
 
@@ -130,7 +117,6 @@ export class PlayerController {
       true
     );
   }
-
 
   // ==========================================
   // DIRECCIÓN
@@ -146,7 +132,6 @@ export class PlayerController {
     this.facing =
       direction < 0 ? -1 : 1;
   }
-
 
   // ==========================================
   // DETENER MOVIMIENTO
