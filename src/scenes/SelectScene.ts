@@ -8,6 +8,28 @@ export class SelectScene extends BaseScene {
     super("Select");
   }
 
+
+  // ==========================================
+  // ASSETS
+  // ==========================================
+
+  preload() {
+    this.load.image(
+      "explorer-portrait",
+      "assets/characters/explorer/portrait.png"
+    );
+
+    this.load.image(
+      "adventurer-portrait",
+      "assets/characters/adventurer/portrait.png"
+    );
+  }
+
+
+  // ==========================================
+  // CREATE
+  // ==========================================
+
   create() {
     this.cameras.main.setBackgroundColor(
       "#17130f"
@@ -21,39 +43,41 @@ export class SelectScene extends BaseScene {
       "#e7c66e"
     );
 
+
+    // ========================================
+    // CREAR PERSONAJE SELECCIONABLE
+    // ========================================
+
     const make = (
       x: number,
       key: HeroKey,
-      label: string,
-      color: number
+      label: string
     ) => {
 
-      const box = this.add
-        .rectangle(
+      const portraitKey =
+        key === "explorer"
+          ? "explorer-portrait"
+          : "adventurer-portrait";
+
+
+      // Imagen real del personaje
+      const portrait = this.add
+        .image(
           x,
-          270,
-          160,
-          250,
-          0x24211c
+          220,
+          portraitKey
         )
-        .setStrokeStyle(3, color)
-        .setInteractive();
+        .setOrigin(0.5)
+        .setDisplaySize(
+          105,
+          150
+        )
+        .setInteractive({
+          useHandCursor: true,
+        });
 
-      this.add.rectangle(
-        x,
-        245,
-        60,
-        105,
-        color
-      );
 
-      this.add.circle(
-        x,
-        180,
-        30,
-        color
-      );
-
+      // Nombre
       this.txt(
         x,
         355,
@@ -61,6 +85,8 @@ export class SelectScene extends BaseScene {
         17
       );
 
+
+      // Arma
       this.txt(
         x,
         390,
@@ -71,35 +97,51 @@ export class SelectScene extends BaseScene {
         "#e7c66e"
       );
 
-      box.on("pointerdown", () => {
-        localStorage.setItem(
-          "hero",
-          key
-        );
 
-        this.scene.start("Worlds");
-      });
+      // Seleccionar personaje
+      portrait.on(
+        "pointerdown",
+        () => {
+          localStorage.setItem(
+            "hero",
+            key
+          );
+
+          this.scene.start(
+            "Worlds"
+          );
+        }
+      );
     };
+
+
+    // ========================================
+    // PERSONAJES
+    // ========================================
 
     make(
       115,
       "explorer",
-      "EXPLORER",
-      0x3d87c7
+      "EXPLORER"
     );
 
     make(
       317,
       "adventurer",
-      "ADVENTURER",
-      0xb94e62
+      "ADVENTURER"
     );
+
+
+    // ========================================
+    // VOLVER
+    // ========================================
 
     this.button(
       W / 2,
       660,
       "← BACK",
-      () => this.scene.start("Menu"),
+      () =>
+        this.scene.start("Menu"),
       180
     );
   }
