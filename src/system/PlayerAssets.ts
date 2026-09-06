@@ -8,7 +8,7 @@ export function preloadPlayerAssets(scene: Phaser.Scene): void {
   scene.load.spritesheet("explorer-shoot", "assets/characters/explorer/shoot.png", { frameWidth: 83, frameHeight: 78 });
 
   scene.load.spritesheet("adventurer-idle", "assets/characters/adventurer/idle.png", { frameWidth: 43, frameHeight: 78 });
-  scene.load.spritesheet("adventurer-run", "assets/characters/adventurer/run.png", { frameWidth: 52, frameHeight: 78 });
+  scene.load.spritesheet("adventurer-run", "assets/characters/adventurer/run.png", { frameWidth: 50, frameHeight: 78 });
   scene.load.spritesheet("adventurer-jump", "assets/characters/adventurer/jump.png", { frameWidth: 53, frameHeight: 78 });
   scene.load.spritesheet("adventurer-fall", "assets/characters/adventurer/fall.png", { frameWidth: 64, frameHeight: 85 });
   scene.load.spritesheet("adventurer-shoot", "assets/characters/adventurer/shoot.png", { frameWidth: 60, frameHeight: 86 });
