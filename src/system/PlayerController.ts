@@ -63,7 +63,7 @@ export class PlayerController {
     velocityX: number,
     isShooting: boolean
   ): void {
-    // Exploradora: IDLE, RUN y JUMP.
+    // Exploradora: IDLE, RUN, JUMP y FALL.
     if (this.hero === "adventurer") {
       if (isShooting) {
         return;
@@ -88,9 +88,16 @@ export class PlayerController {
         return;
       }
 
-      // Aún no tenemos FALL:
-      // durante la caída conservamos el último frame de JUMP.
       if (!onGround && velocityY >= 0) {
+        if (
+          this.player.anims.currentAnim?.key !==
+          "adventurer-fall"
+        ) {
+          this.player.play(
+            "adventurer-fall"
+          );
+        }
+
         return;
       }
 

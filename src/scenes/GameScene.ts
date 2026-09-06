@@ -453,7 +453,12 @@ export class GameScene extends BaseScene {
       return;
     }
 
-    this.sound.play("jump", {
+    const jumpSound =
+      getHero() === "adventurer"
+        ? "adventurer-jump"
+        : "jump";
+
+    this.sound.play(jumpSound, {
       volume: 0.6,
     });
   }
@@ -470,8 +475,13 @@ export class GameScene extends BaseScene {
     this.lastShot = this.time.now;
     this.isShooting = true;
 
-    // Empieza la animación del arco
-    this.player.play("explorer-shoot", true);
+    // Empieza la animación del arco del personaje seleccionado
+    const shootAnimation =
+      getHero() === "adventurer"
+        ? "adventurer-shoot"
+        : "explorer-shoot";
+
+    this.player.play(shootAnimation, true);
 
     // Esperamos hasta el momento en que suelta la cuerda
     this.time.delayedCall(320, () => {
@@ -486,7 +496,7 @@ export class GameScene extends BaseScene {
     });
 
     this.player.once(
-      Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + "explorer-shoot",
+      Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + shootAnimation,
       () => {
         this.isShooting = false;
       },
@@ -498,8 +508,13 @@ export class GameScene extends BaseScene {
 
     if (this.invulnerable || this.won) return;
 
-    // Sonido al recibir daño
-    this.sound.play("player-hurt", {
+    // Sonido al recibir daño según el personaje seleccionado
+    const hurtSound =
+      getHero() === "adventurer"
+        ? "adventurer-hurt"
+        : "player-hurt";
+
+    this.sound.play(hurtSound, {
       volume: 0.55,
     });
 
