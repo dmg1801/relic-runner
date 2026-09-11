@@ -38,7 +38,7 @@ export class SelectScene extends BaseScene {
     this.txt(
       W / 2,
       80,
-      "CHOOSE EXPLORER",
+      "CHOOSE CHARACTER",
       27,
       "#e7c66e"
     );
@@ -122,13 +122,13 @@ export class SelectScene extends BaseScene {
     make(
       115,
       "explorer",
-      "EXPLORER"
+      "CARLOS"
     );
 
     make(
       317,
       "adventurer",
-      "ADVENTURER"
+      "ALEJANDRA"
     );
 
 
